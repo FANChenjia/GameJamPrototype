@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f3efe2">
+  <title>协奏原野 · Concerto Meadow</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <svg class="svg-defs" aria-hidden="true"><defs><filter id="paper"><feTurbulence type="fractalNoise" baseFrequency=".65" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".055"/></feComponentTransfer><feBlend in="SourceGraphic" mode="multiply"/></filter></defs></svg>
+  <header class="masthead">
+    <a class="brand" href="#" aria-label="协奏原野首页"><span id="brand-icon"></span><span><strong>协奏原野<span class="brand-dot">.</span></strong><small>CONCERTO MEADOW</small></span></a>
+    <div class="chapter"><span class="chapter-line"></span> 第一章 <span class="chapter-dot">/</span> 草地上的序曲 <span class="chapter-line"></span></div>
+    <div class="header-tools"><span class="demo-tag"><i></i> PLAYGROUND · v0.1</span><button id="settings-open" class="text-button"><span data-icon="settings"></span> 调试设置</button></div>
+  </header>
+  <main class="game-layout">
+    <aside class="book" aria-label="乐谱与商店">
+      <div class="book-edge"></div><span class="ribbon">I</span>
+      <div class="book-heading"><span class="eyebrow">THE CONDUCTOR’S NOTEBOOK</span><h1>指挥家的手记</h1><span class="heading-flourish">〜 ♩ 〜</span></div>
+      <section class="hand-section">
+        <div class="section-title"><h2><span class="small-index">01</span> 灵感牌堆</h2><span class="count-badge" id="hand-count">3 张</span></div>
+        <p class="section-note">每一个念头，都能改变这场演奏。</p>
+        <button class="deck" id="deck-open" aria-expanded="false" aria-label="展开三张手牌"><span class="deck-card back-three"></span><span class="deck-card back-two"></span><span class="deck-card front"><span class="card-corner">✧</span><span class="card-cover-art" id="deck-art"></span><span class="deck-wordmark">灵 感 乐 章</span><span class="card-corner bottom">✧</span></span><span class="deck-caption">点击展开手牌 <span>↗</span></span></button>
+        <div class="hand-cards hidden" id="hand-cards"></div>
+        <div class="card-instruction" id="card-instruction"><span data-icon="cursor"></span><span>展开手牌，选择灵感，再点击乐器</span></div>
+      </section>
+      <div class="book-divider"><span>✧</span></div>
+      <section class="shop-section">
+        <button class="section-title shop-toggle" id="shop-open" aria-expanded="false"><h2><span class="small-index">02</span> 旅人商店</h2><span id="shop-toggle-label">逛一逛 ↗</span></button>
+        <p class="section-note">用一点协奏，换一点新的可能。</p>
+        <button class="shop-illustration" id="shop-illustration" aria-label="打开旅人商店"><span id="shop-art"></span><span class="shop-sign">灵感 · 杂货铺</span><span class="shop-open-label">今日营业中 <i></i></span></button>
+        <div class="shop-cards hidden" id="shop-cards"></div>
+        <div class="wallet"><span class="coin-symbol">✦</span><div><small>你的协奏点</small><strong id="book-points">120</strong></div><span class="wallet-income" id="income-label">+ 2 / 秒</span></div>
+      </section>
+      <footer class="book-footer"><span>随风写下的旋律，终会成为力量。</span><span>— 01 —</span></footer>
+    </aside>
+    <section class="stage-column" aria-label="战斗与防线">
+      <div class="stage-topbar"><div class="stage-title"><span class="live-dot"></span><h2>原野演奏场</h2><span id="phase-label">准备乐章</span></div><div class="stage-stats"><span data-icon="clock"></span><strong id="timer">00:00</strong><span class="timer-total" id="timer-total">/ 02:00</span><span class="stats-divider"></span><span data-icon="monster"></span><strong id="kill-count">0</strong><span class="stat-unit">击退</span></div></div>
+      <div class="battle-shell" id="battle-shell">
+        <div class="field-heading"><span><i></i> 风经过的地方，音乐正在生长。</span><button id="range-toggle" title="切换攻击范围显示" aria-pressed="false"><span data-icon="eye"></span> 攻击范围</button></div>
+        <div class="battle-world" id="battle-world"><canvas id="battle-canvas" aria-label="五列草原战场与五乘四防线"></canvas><div id="placement-grid" class="placement-grid" aria-label="防线构筑网格"></div><div class="world-label"><span>DEFENSE LINE</span><b>防 线 构 筑 区</b><span>5 × 4</span></div><div class="battle-message" id="battle-message"><span class="message-flower">✳</span><h3>让原野，听见你的旋律。</h3><p>布置乐器，奏响第一小节。</p></div></div>
+        <div class="field-bottom"><span><i class="tiny-dot"></i><span id="field-tip">拖入乐器，或拖动场上乐器调整位置</span></span><span id="placed-count">3 件乐器就位</span></div>
+      </div>
+      <div class="instrument-bench"><div class="bench-label"><h3>你的乐团</h3><span>拖放 · 布置 · 演奏</span></div><div class="instrument-list" id="instrument-list"></div><button class="bench-add" id="workshop-open" title="自定义乐器"><span>＋</span><small>创作乐器</small></button></div>
+      <div class="transport"><div class="transport-note"><span data-icon="leaf"></span><span id="transport-note">准备好了吗？原野在等你的第一声。</span></div><div class="transport-controls"><button id="reset-game" class="icon-button" title="重新布置" aria-label="重置本局"><span data-icon="reset"></span></button><button id="speed-toggle" class="speed-button" title="切换模拟倍速">1×</button><button id="start-game" class="primary-button"><span data-icon="play"></span><span>开始演奏</span></button></div></div>
+    </section>
+  </main>
+  <footer class="page-footer"><span>一场关于音乐、灵感与守护的微小实验。</span><span><i></i> 所有好旋律，都从一次尝试开始 <span class="footer-flower">✳</span></span></footer>
+  <div class="toast" id="toast" role="status"></div>
+  <dialog id="settings-dialog" class="settings-dialog">
+    <div class="modal-heading"><div><span class="eyebrow">THE WORKBENCH</span><h2>为下一场演奏调音</h2></div><button id="settings-close" class="icon-button" aria-label="关闭设置">×</button></div>
+    <div class="settings-tabs"><button class="active" data-tab="game">演奏参数</button><button data-tab="instruments">乐器工坊</button><button data-tab="guide">玩法手记</button></div>
+    <div class="settings-body" id="game-settings"><form id="settings-form"><div class="settings-intro">所有参数均可修改；保存后立即用于本局，初始点数在重置后生效。</div><div class="setting-group"><h3>原野与怪物</h3><div class="settings-grid" id="world-fields"></div></div><div class="setting-group"><h3>协奏与灵感</h3><div class="settings-grid" id="card-fields"></div></div><div class="form-error" id="settings-error" role="alert"></div><div class="modal-actions"><button type="button" id="restore-settings" class="secondary-button">恢复默认参数</button><button type="submit" class="primary-button">保存演奏参数</button></div></form></div>
+    <div class="settings-body hidden" id="instrument-settings"><div class="workshop-layout"><div class="saved-instruments"><div class="workshop-list" id="workshop-list"></div><button class="secondary-button" id="new-instrument">＋ 新建乐器</button></div><form id="instrument-form"><div class="instrument-form-top"><div id="instrument-preview"></div><label>乐器名称<input name="name" required maxlength="12" placeholder="给旋律起个名字"></label></div><label class="field-label">手绘图标</label><div id="icon-picker" class="icon-picker"></div><div class="settings-grid instrument-numbers"><label>攻击速度 <span>次 / 秒</span><input name="attackSpeed" type="number" min="0.05" max="30" step="0.05" required></label><label>单次伤害 <span>点</span><input name="damage" type="number" min="1" max="10000" step="1" required></label><label>攻击范围 <span>列</span><input name="range" type="number" min="1" max="5" step="1" required></label></div><div class="shape-editor"><div><label class="field-label">占格形状 <strong id="shape-count">1 格</strong></label><p>点击格子绘制连续形状。<br>偶数占格需搭配 2 或 4 列范围。</p><small>攻击原点为所有占格的几何中心。</small></div><div id="shape-grid" class="shape-grid"></div></div><div class="form-error" id="instrument-error" role="alert"></div><div class="modal-actions"><button class="danger-button" type="button" id="delete-instrument">删除乐器</button><button type="submit" class="primary-button">保存这件乐器</button></div></form></div></div>
+    <div class="settings-body guide hidden" id="guide-settings"><h3>先让乐团就位</h3><p>从下方乐器栏拖入 5×4 网格，或点击乐器后再点击网格。拖动场上乐器可自由调整位置，同位分身会一起移动。重叠或越界时回到原位。淡绿预览表示可以放置，红色表示重叠或超出边界。点击已放置的乐器可以查看属性；按 Delete 删除，按 Esc 取消选择。布置不消耗协奏点。</p><h3>给乐器一点灵感</h3><p>点开左侧牌堆，选择一张牌，再点击场上的乐器。「急板」增加攻速，「延音」增加攻击列数，「回响」在相同位置召唤独立攻击的分身。每张牌使用一次，旅人商店可以补充。</p><h3>守住这片原野</h3><p>怪物从随机一列出现，直线向防线移动。乐器从占格中心向上攻击，优先攻击范围内最靠近防线的怪物。任何怪物触碰防线，本局结束；坚持到设定时间则演奏成功。</p><h3>一些调试约定</h3><p>攻击范围按连续列计算，并在边缘向场内平移；最多覆盖 5 列。偶数占格只能覆盖 2 或 4 列，延音牌会自动增加到下一个合法值。分身继承施放当时的属性，后续增益各自生效。打开设置、切换到后台时自动暂停。2× 同时加速战斗、计时和收入。</p><p>参数、乐器模板和初始布置保存在本浏览器；重置会清除本局增益并回到准备状态。模板修改影响新放置的乐器，已有乐器保留放置时的属性。</p></div>
+  </dialog>
+  <dialog id="result-dialog" class="result-dialog"><div id="result-art"></div><span class="eyebrow" id="result-eyebrow"></span><h2 id="result-title"></h2><p id="result-description"></p><div class="result-stats" id="result-stats"></div><button class="primary-button" id="play-again">再演奏一次</button><button class="text-button" id="result-close">返回原野</button></dialog>
+  <script src="icons.js"></script><script src="engine.js"></script><script src="renderer.js"></script><script src="app.js"></script>
+</body>
+</html>
