@@ -15,25 +15,32 @@
     <div class="header-tools"><span class="demo-tag"><i></i> PLAYGROUND · v0.1</span><button id="settings-open" class="text-button"><span data-icon="settings"></span> 调试设置</button></div>
   </header>
   <main class="game-layout">
-    <aside class="book" aria-label="乐谱与商店">
-      <div class="book-edge"></div><span class="ribbon">I</span>
-      <div class="book-heading"><span class="eyebrow">THE CONDUCTOR’S NOTEBOOK</span><h1>指挥家的手记</h1><span class="heading-flourish">〜 ♩ 〜</span></div>
-      <section class="hand-section">
-        <div class="section-title"><h2><span class="small-index">01</span> 灵感牌堆</h2><span class="count-badge" id="hand-count">3 张</span></div>
-        <p class="section-note">每一个念头，都能改变这场演奏。</p>
-        <button class="deck" id="deck-open" aria-expanded="false" aria-label="展开三张手牌"><span class="deck-card back-three"></span><span class="deck-card back-two"></span><span class="deck-card front"><span class="card-corner">✧</span><span class="card-cover-art" id="deck-art"></span><span class="deck-wordmark">灵 感 乐 章</span><span class="card-corner bottom">✧</span></span><span class="deck-caption">点击展开手牌 <span>↗</span></span></button>
-        <div class="hand-cards hidden" id="hand-cards"></div>
-        <div class="card-instruction" id="card-instruction"><span data-icon="cursor"></span><span>展开手牌，选择灵感，再点击乐器</span></div>
-      </section>
-      <div class="book-divider"><span>✧</span></div>
-      <section class="shop-section">
-        <button class="section-title shop-toggle" id="shop-open" aria-expanded="false"><h2><span class="small-index">02</span> 旅人商店</h2><span id="shop-toggle-label">逛一逛 ↗</span></button>
-        <p class="section-note">用一点协奏，换一点新的可能。</p>
-        <button class="shop-illustration" id="shop-illustration" aria-label="打开旅人商店"><span id="shop-art"></span><span class="shop-sign">灵感 · 杂货铺</span><span class="shop-open-label">今日营业中 <i></i></span></button>
-        <div class="shop-cards hidden" id="shop-cards"></div>
-        <div class="wallet"><span class="coin-symbol">✦</span><div><small>你的协奏点</small><strong id="book-points">120</strong></div><span class="wallet-income" id="income-label">+ 2 / 秒</span></div>
-      </section>
-      <footer class="book-footer"><span>随风写下的旋律，终会成为力量。</span><span>— 01 —</span></footer>
+    <aside class="book book-paged" data-page="cards" aria-label="指挥家的两页手记">
+      <div class="book-edge"></div>
+      <nav class="book-bookmarks" role="tablist" aria-label="切换书页">
+        <button class="book-bookmark active" id="book-tab-cards" role="tab" aria-selected="true" aria-controls="book-cards-page" tabindex="0" data-book-page="cards"><span>I</span><strong>卡牌</strong></button>
+        <button class="book-bookmark" id="book-tab-shop" role="tab" aria-selected="false" aria-controls="book-shop-page" tabindex="-1" data-book-page="shop"><span>II</span><strong>商店</strong></button>
+      </nav>
+      <div class="book-heading"><span class="eyebrow">THE CONDUCTOR’S NOTEBOOK</span><h1 id="book-page-title">卡牌</h1><span class="heading-flourish">〜 ♩ 〜</span></div>
+      <div class="book-pages">
+        <section class="book-page hand-section" id="book-cards-page" role="tabpanel" aria-labelledby="book-tab-cards">
+          <div class="section-title"><h2><span class="small-index">01</span> 灵感牌堆</h2><span class="count-badge" id="hand-count">3 张</span></div>
+          <p class="section-note">每一个念头，都能改变这场演奏。</p>
+          <button class="deck" id="deck-open" aria-expanded="false" aria-label="展开手牌"><span class="deck-card back-three"></span><span class="deck-card back-two"></span><span class="deck-card front"><span class="card-corner">✧</span><span class="card-cover-art" id="deck-art"></span><span class="deck-wordmark">灵 感 乐 章</span><span class="card-corner bottom">✧</span></span><span class="deck-caption">点击展开手牌 <span>↗</span></span></button>
+          <div class="hand-cards hidden" id="hand-cards"></div>
+          <div class="card-instruction" id="card-instruction"><span data-icon="cursor"></span><span>展开手牌，选择灵感，再点击乐器</span></div>
+          <div class="book-page-note" aria-hidden="true"><span>♩</span><p>把一闪而过的灵感，写成下一段旋律。</p></div>
+        </section>
+        <section class="book-page shop-section" id="book-shop-page" role="tabpanel" aria-labelledby="book-tab-shop" hidden>
+          <button class="section-title shop-toggle" id="shop-open" aria-expanded="false"><h2><span class="small-index">02</span> 旅人商店</h2><span id="shop-toggle-label">逛一逛 ↗</span></button>
+          <p class="section-note">用一点协奏，换一点新的可能。</p>
+          <button class="shop-illustration" id="shop-illustration" aria-label="展开商店卡牌"><span id="shop-art"></span><span class="shop-sign">灵感 · 杂货铺</span><span class="shop-open-label">今日营业中 <i></i></span></button>
+          <div class="shop-cards hidden" id="shop-cards"></div>
+          <p class="shop-page-tip">购入的灵感会收进「卡牌」页，等你翻阅。</p>
+        </section>
+      </div>
+      <div class="wallet"><span class="coin-symbol">✦</span><div><small>你的协奏点</small><strong id="book-points">120</strong></div><span class="wallet-income" id="income-label">+ 2 / 秒</span></div>
+      <footer class="book-footer"><span id="book-page-quote">随风写下的旋律，终会成为力量。</span><span id="book-page-number">— 01 / 02 —</span></footer>
     </aside>
     <section class="stage-column" aria-label="战斗与防线">
       <div class="stage-topbar"><div class="stage-title"><span class="live-dot"></span><h2>原野演奏场</h2><span id="phase-label">准备乐章</span></div><div class="stage-stats"><span data-icon="clock"></span><strong id="timer">00:00</strong><span class="timer-total" id="timer-total">/ 02:00</span><span class="stats-divider"></span><span data-icon="monster"></span><strong id="kill-count">0</strong><span class="stat-unit">击退</span></div></div>
