@@ -15,7 +15,22 @@ class Game{
  at(col,row){return this.units.find(u=>!u.clone&&u.profile.shape.some(([x,y])=>u.col+x===col&&u.row+y===row));}
  center(u){let s=u.profile.shape;return {x:u.col+s.reduce((n,p)=>n+p[0]+.5,0)/s.length,row:u.row+s.reduce((n,p)=>n+p[1]+.5,0)/s.length};}
  attackRange(u){return Math.min(u.profile.shape.length%2===0?4:5,u.profile.range+u.rangeBonus);}
- lanes(u){let range=this.attackRange(u),center=this.center(u).x;let start=Math.max(0,Math.min(5-range,Math.round(center-range/2)));return Array.from({length:range},(_,i)=>start+i);}
+ lanes(u){
+   const range=this.attackRange(u),center=this.center(u).x,half=Math.floor(range/2);
+   let lanes=[];
+   if(range%2===0){
+     // Split an even range equally around the actual firing axis.
+     // A lane whose center is exactly on that axis is not a left or right lane.
+     const axis=center-.5;
+     const leftEnd=Math.ceil(axis)-1,rightStart=Math.floor(axis)+1;
+     for(let offset=0;offset<half;offset++)lanes.push(leftEnd-offset,rightStart+offset);
+   }else{
+     const anchor=Math.floor(center);
+     for(let offset=-half;offset<=half;offset++)lanes.push(anchor+offset);
+   }
+   // Clip at the battlefield edge; never move lost coverage to the other side.
+   return lanes.filter(lane=>lane>=0&&lane<5).sort((a,b)=>a-b);
+ }
  remove(id){this.units=this.units.filter(u=>u.id!==id&&u.parent!==id);}
  buy(type){let cost=this.config[type+'Cost'];if(!Number.isFinite(cost)||!['speed','range','clone'].includes(type))return {ok:false,message:'未知的卡牌。'};if(this.points+1e-8<cost)return {ok:false,message:'协奏点还不够，再听一会儿风吧。'};if(this.hand.length>=30)return {ok:false,message:'手牌已满（30 张），先使用一些灵感吧。'};this.points=Math.max(0,this.points-cost);this.hand.push({id:++this.seq,type});return {ok:true,message:'一份新的灵感，已收入牌堆。'};}
  useCard(cardId,unitId){let card=this.hand.find(c=>c.id===cardId),u=this.units.find(u=>u.id===unitId);if(!card||!u)return {ok:false,message:'请先选择卡牌，再选择乐器。'};if(card.type==='speed')u.speedBonus+=this.config.speedBuff/100;
@@ -29,7 +44,28 @@ class Game{
  update(dt){if(this.phase!=='running')return;dt=Math.min(dt,1/30);const effective=Math.min(dt,Math.max(0,this.config.duration-this.elapsed));if(!effective){this.finish(true);return;}dt=effective;this.elapsed+=dt;this.points+=this.config.pointsPerSecond*dt;this.spawnClock+=dt;
  while(this.spawnClock>=this.config.spawnInterval){this.spawnClock-=this.config.spawnInterval;this.spawn();}
  for(let m of this.monsters){m.y+=dt/this.config.travelTime;m.hit=Math.max(0,m.hit-dt);if(m.y>=1){this.finish(false);return;}}
- for(let u of this.units){u.cooldown-=dt;u.flash=Math.max(0,u.flash-dt);if(u.cooldown<=0){let lanes=this.lanes(u),target=this.monsters.filter(m=>m.hp>0&&lanes.includes(m.lane)).sort((a,b)=>b.y-a.y)[0];if(target){let center=this.center(u);u.cooldown+=1/(u.profile.attackSpeed*(1+u.speedBonus));u.cooldown=Math.max(0,u.cooldown);u.flash=.28;this.pulses.push({unitId:u.id,x:center.x,y:(.65+center.row*.08-.04)/.56,t:0,life:.5,clone:u.clone});this.bullets.push({id:++this.seq,unitId:u.id,targetId:target.id,from:{x:center.x,y:(.65+center.row*.08-.04)/.56},to:{x:target.lane+.5,y:target.y},t:0,life:.3,damage:u.profile.damage,clone:u.clone,note:Math.random()>.5?'♪':'♫'});}else u.cooldown=0;}}
+ // One attack is a volley: every living monster in the covered lanes is hit once.
+ // All notes use the same lifetime, so a volley lands simultaneously regardless of distance.
+ for(const u of this.units){
+   u.cooldown-=dt;
+   u.flash=Math.max(0,u.flash-dt);
+   if(u.cooldown>0)continue;
+   const lanes=this.lanes(u);
+   const targets=this.monsters.filter(m=>m.hp>0&&lanes.includes(m.lane));
+   if(!targets.length){u.cooldown=0;continue;}
+   const center=this.center(u);
+   const origin={x:center.x,y:(.65+center.row*.08-.04)/.56};
+   // Attack speed belongs to the whole volley, not to individual targets or lanes.
+   u.cooldown=Math.max(0,u.cooldown+1/(u.profile.attackSpeed*(1+u.speedBonus)));
+   u.flash=.28;
+   this.pulses.push({unitId:u.id,...origin,lanes,t:0,life:.5,clone:u.clone});
+   for(const target of targets){
+     this.bullets.push({id:++this.seq,unitId:u.id,targetId:target.id,from:{...origin},
+       to:{x:target.lane+.5,y:target.y},t:0,life:.3,damage:u.profile.damage,
+       clone:u.clone,note:Math.random()>.5?'♪':'♫'});
+   }
+ }
+
  for(let b of this.bullets){b.t+=dt;const target=this.monsters.find(m=>m.id===b.targetId);if(target)b.to={x:target.lane+.5,y:target.y};if(b.t>=b.life){if(target&&target.hp>0){target.hp-=b.damage;target.hit=.24;this.effects.push({x:target.lane+.5,y:target.y,t:0,life:.4,burst:true,color:'#f4e4a1'});this.effects.push({x:target.lane+.5,y:target.y,t:0,life:.65,text:`−${b.damage}`,color:'#5f7050'});if(target.hp<=0){this.kills++;this.points+=this.config.killReward;this.effects.push({x:target.lane+.5,y:target.y,t:0,life:.8,text:`+${this.config.killReward} ✦`,color:'#967a38'});}}}}
  this.bullets=this.bullets.filter(b=>b.t<b.life);this.monsters=this.monsters.filter(m=>m.hp>0);for(let e of this.effects)e.t+=dt;this.effects=this.effects.filter(e=>e.t<e.life);for(let p of this.pulses)p.t+=dt;this.pulses=this.pulses.filter(p=>p.t<p.life);if(this.elapsed>=this.config.duration-1e-8){this.elapsed=this.config.duration;this.finish(true);}}
  advance(seconds){let remaining=seconds;while(remaining>1e-8&&this.phase==='running'){let dt=Math.min(remaining,1/60);this.update(dt);remaining-=dt;}}
