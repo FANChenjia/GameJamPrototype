@@ -131,3 +131,20 @@
   .book-page { animation: none; }
   .book-bookmark { transition: none; }
 }
+
+/* Instrument attack mode: accessible native checkbox with a painted switch. */
+.piercing-setting{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:center;gap:14px;padding:13px 14px;margin-top:18px;border:1px solid #cdd5bc;border-radius:6px;background:#e9eddb;cursor:pointer}
+.piercing-copy strong{display:block;font-size:12px;font-weight:500;color:#526747}
+.piercing-copy small{display:block;margin-top:6px;font-size:10px;line-height:1.8;color:#899578}
+.piercing-setting input{position:absolute;right:14px;top:calc(50% - 13px);width:44px;height:26px;padding:0;margin:0;opacity:0;cursor:pointer}
+.piercing-switch{position:relative;width:44px;height:26px;border-radius:20px;background:#c8d0b8;border:1px solid #b1bea0;transition:background .18s,border-color .18s;pointer-events:none}
+.piercing-switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fbf7e9;box-shadow:0 1px 3px #42583825;transition:transform .18s}
+.piercing-setting input:checked+.piercing-switch{background:#688354;border-color:#526f43}
+.piercing-setting input:checked+.piercing-switch::after{transform:translateX(18px)}
+.piercing-setting input:focus-visible+.piercing-switch{outline:2px solid #b08c50;outline-offset:3px}
+
+.attack-option-muted{opacity:.55;cursor:default}
+.attack-option-muted input{cursor:not-allowed}
+.piercing-copy .area-attack-preview{color:#5e7c57;font-weight:500}
+.area-attack-preview:empty{display:none}
+.instrument-numbers input:disabled{opacity:.5;cursor:not-allowed}
