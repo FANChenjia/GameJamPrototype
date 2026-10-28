@@ -289,9 +289,13 @@ test('改变模板的贯穿设置不会改动已部署的乐器快照', () => {
 });
 
 
+function areaFixture(options = {}) {
+  return fixture({ areaAttack: true, damage: 9, ...options });
+}
+
 test('范围攻击：每个覆盖列独立随机生成一个纵向三分之一区域，不再发射普通音符', () => {
   const rolls = [0, 0.4, 0.99];
-  const { game } = fixture({ areaAttack: true, random: () => rolls.shift() });
+  const { game } = areaFixture({ random: () => rolls.shift() });
   game.start();
   game.advance(0.1);
   assert.equal(game.areas.length, 3);
@@ -301,63 +305,68 @@ test('范围攻击：每个覆盖列独立随机生成一个纵向三分之一�
   assert.equal(game.bullets.length, 0);
 });
 
-test('范围攻击：一个攻击间隔内恰好结算三次，每次按有效攻速的3/4计算', () => {
-  const { game, monster } = fixture({ areaAttack: true, range: 1, damage: 9999, random: () => 0.5 });
+test('范围攻击：一个攻击间隔内结算三次，每跳为设置伤害的1/3', () => {
+  const { game, monster } = areaFixture({ range: 1, damage: 30, random: () => 0.5 });
   const target = monster(1, 0.5);
   game.start();
   game.advance(0.25);
   assert.equal(target.hp, 100);
   assert.equal(game.areas[0].ticks, 0);
   game.advance(0.1);
-  assert.equal(target.hp, 99.25);
+  assert.equal(target.hp, 90);
   assert.equal(game.areas[0].ticks, 1);
   game.advance(0.34);
-  assert.equal(target.hp, 98.5);
+  assert.equal(target.hp, 80);
   assert.equal(game.areas[0].ticks, 2);
   game.units = [];
   game.advance(0.32);
-  assert.equal(target.hp, 97.75);
+  assert.equal(target.hp, 70);
   assert.equal(game.areas.length, 0);
   game.advance(1);
-  assert.equal(target.hp, 97.75);
+  assert.equal(target.hp, 70);
 });
 
 test('范围攻击：只伤害对应列、对应纵向区域中的怪物', () => {
-  const { game, monster } = fixture({ areaAttack: true, range: 1, random: () => 0.5 });
+  const { game, monster } = areaFixture({ range: 1, random: () => 0.5 });
   const inside = [monster(1, 0.4), monster(1, 0.6)];
   const outside = [monster(1, 0.1), monster(1, 0.8), monster(0, 0.5), monster(2, 0.5)];
   game.start();
   game.advance(0.35);
-  inside.forEach(target => assert.equal(target.hp, 99.25));
+  inside.forEach(target => assert.equal(target.hp, 97));
   outside.forEach(target => assert.equal(target.hp, 100));
 });
 
 test('范围攻击优先于贯穿关闭，区域内多只怪物仍同时受伤', () => {
-  const { game, monster } = fixture({ areaAttack: true, piercing: false, range: 1, random: () => 0.5 });
+  const { game, monster } = areaFixture({ piercing: false, range: 1, random: () => 0.5 });
   const targets = [monster(1, 0.42), monster(1, 0.57)];
   game.start();
   game.advance(0.35);
-  targets.forEach(target => assert.equal(target.hp, 99.25));
+  targets.forEach(target => assert.equal(target.hp, 97));
   assert.equal(game.bullets.length, 0);
 });
 
-test('范围攻击：急板计入新区域的伤害和周期，已经生成的区域保留施放时数值', () => {
-  const { game, unit } = fixture({ areaAttack: true, range: 1, random: () => 0.5 });
+test('范围攻击：急板只改变施放频率和周期，不改变每跳伤害', () => {
+  const { game, unit } = areaFixture({ range: 1, random: () => 0.5 });
   unit.speedBonus = 0.5;
   game.start();
   game.advance(0.02);
   const area = game.areas[0];
-  assert.equal(area.damage, 1.125);
+  assert.equal(area.damage, 3);
   assert.ok(Math.abs(area.duration - 2 / 3) < 1e-9);
   assert.ok(Math.abs(area.interval - 2 / 9) < 1e-9);
   game.useCard(game.hand.find(card => card.type === 'speed').id, unit.id);
   assert.equal(game.attackSpeed(unit), 1.75);
-  assert.equal(area.damage, 1.125);
+  assert.equal(area.damage, 3);
   assert.ok(Math.abs(area.duration - 2 / 3) < 1e-9);
+  game.advance(0.7);
+  const newer = game.areas.find(zone => zone.id !== area.id);
+  assert.ok(newer);
+  assert.equal(newer.damage, 3);
+  assert.ok(Math.abs(newer.duration - 1 / 1.75) < 1e-9);
 });
 
 test('伤害区使区域内怪物移动速度降为75%，区域外不减速，重叠不叠加', () => {
-  const { game, monster } = fixture({ areaAttack: true, range: 1, random: () => 0.5 });
+  const { game, monster } = areaFixture({ range: 1, random: () => 0.5 });
   game.start();
   game.advance(0.02);
   game.areas.push({ ...game.areas[0], id: 999 });
@@ -372,7 +381,7 @@ test('伤害区使区域内怪物移动速度降为75%，区域外不减速，�
 });
 
 test('怪物离开伤害区后立即恢复正常移速', () => {
-  const { game, monster } = fixture({ areaAttack: true, range: 1, random: () => 0.5 });
+  const { game, monster } = areaFixture({ range: 1, random: () => 0.5 });
   const target = monster(1, 0.5);
   game.start();
   game.advance(0.05);
@@ -385,7 +394,7 @@ test('怪物离开伤害区后立即恢复正常移速', () => {
 });
 
 test('伤害区结束后清除减速，不遗留永久状态', () => {
-  const { game, monster } = fixture({ areaAttack: true, range: 1, random: () => 0.5 });
+  const { game, monster } = areaFixture({ range: 1, random: () => 0.5 });
   const target = monster(1, 0.5);
   game.start();
   game.advance(0.1);
@@ -399,33 +408,33 @@ test('伤害区结束后清除减速，不遗留永久状态', () => {
 });
 
 test('伤害区每一跳重新检测占位，后进入者受伤，离开后不受后续伤害', () => {
-  const { game, monster } = fixture({ areaAttack: true, range: 1, random: () => 0.5 });
+  const { game, monster } = areaFixture({ range: 1, random: () => 0.5 });
   game.start();
   game.advance(0.4);
   game.units = [];
   const newcomer = monster(1, 0.5);
   game.advance(0.3);
-  assert.equal(newcomer.hp, 99.25);
+  assert.equal(newcomer.hp, 97);
   newcomer.y = 0.8;
   game.advance(0.31);
-  assert.equal(newcomer.hp, 99.25);
+  assert.equal(newcomer.hp, 97);
 });
 
 test('分身继承范围攻击并独立生成区域，重叠区域独立结算伤害', () => {
-  const { game, unit, monster } = fixture({ areaAttack: true, range: 1, random: () => 0.5 });
+  const { game, unit, monster } = areaFixture({ range: 1, random: () => 0.5 });
   const target = monster(1, 0.5);
   game.useCard(game.hand.find(card => card.type === 'clone').id, unit.id);
   assert.equal(game.units[1].profile.areaAttack, true);
   game.start();
   game.advance(0.35);
   assert.equal(game.areas.length, 2);
-  assert.equal(target.hp, 98.5);
+  assert.equal(target.hp, 94);
   assert.equal(target.slowed, true);
 });
 
 test('多个伤害区同时击退同一个怪物时只奖励一次', () => {
-  const { game, unit, monster } = fixture({ areaAttack: true, range: 1, random: () => 0.5 });
-  monster(1, 0.5, 0.75);
+  const { game, unit, monster } = areaFixture({ range: 1, random: () => 0.5 });
+  monster(1, 0.5, 3);
   game.useCard(game.hand.find(card => card.type === 'clone').id, unit.id);
   game.start();
   game.advance(0.35);
@@ -435,17 +444,17 @@ test('多个伤害区同时击退同一个怪物时只奖励一次', () => {
 });
 
 test('高攻速时一帧跨过多个结算点也不会漏掉三次伤害', () => {
-  const { game, monster } = fixture({ areaAttack: true, range: 1, attackSpeed: 30, random: () => 0.5 });
+  const { game, monster } = areaFixture({ range: 1, attackSpeed: 30, random: () => 0.5 });
   const target = monster(1, 0.5);
   game.start();
   game.update(1 / 30);
-  assert.equal(target.hp, 32.5);
+  assert.equal(target.hp, 91);
   assert.equal(game.effects.filter(effect => effect.burst).length, 3);
   assert.equal(game.areas.length, 0);
 });
 
 test('暂停会冻结伤害区和怪物，重置会清除区域并保留乐器模式', () => {
-  const { game, monster } = fixture({ areaAttack: true, range: 1, random: () => 0.5 });
+  const { game, monster } = areaFixture({ range: 1, random: () => 0.5 });
   const target = monster(1, 0.5);
   game.start();
   game.advance(0.1);
@@ -468,7 +477,7 @@ test('范围攻击保存为布尔值，旧存档默认关闭且不会改变已�
   assert.equal(validateTemplate(legacy), '');
   assert.match(validateTemplate({ ...legacy, areaAttack: 'true' }), /范围攻击/);
   assert.match(validateTemplate({ ...legacy, areaAttack: null }), /范围攻击/);
-  const { game, unit } = fixture({ areaAttack: true });
+  const { game, unit } = areaFixture();
   const stored = JSON.parse(JSON.stringify(unit.original));
   assert.equal(stored.areaAttack, true);
   const restored = new Game();
@@ -482,11 +491,24 @@ test('范围攻击保存为布尔值，旧存档默认关闭且不会改变已�
 
 
 test('伤害区按实际施放时刻计时，连续攻击时不会因帧余量提前消失', () => {
-  const { game } = fixture({ areaAttack: true, range: 1, attackSpeed: 1.6, random: () => 0.5 });
+  const { game } = areaFixture({ range: 1, attackSpeed: 1.6, random: () => 0.5 });
   game.start();
   for (let frame = 0; frame < 300; frame++) {
     game.advance(1 / 60);
     assert.ok(game.areas.length > 0, `第 ${frame} 帧应存在有效伤害区`);
     game.areas.forEach(area => assert.ok(Math.abs(area.age - Math.min(area.duration, game.elapsed - area.bornAt)) < 1e-8));
   }
+});
+
+
+test('设置伤害不能被3整除时保留小数，三跳总伤害仍等于设置伤害', () => {
+  const { game, monster } = areaFixture({ range: 1, damage: 10, random: () => 0.5 });
+  const target = monster(1, 0.5);
+  game.start();
+  game.advance(0.1);
+  assert.equal(game.areas[0].damage, 10 / 3);
+  game.units = [];
+  game.advance(0.91);
+  assert.ok(Math.abs(target.hp - 90) < 1e-9);
+  assert.equal(game.areas.length, 0);
 });

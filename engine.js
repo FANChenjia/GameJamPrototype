@@ -2,7 +2,7 @@
 (function(global){
 const DEFAULTS={duration:120,spawnInterval:2.4,monsterHealth:65,travelTime:24,pointsPerSecond:2,killReward:12,initialPoints:120,speedBuff:25,rangeBuff:1,speedCost:40,rangeCost:50,cloneCost:80};
 const TEMPLATES=[{id:'flute',name:'风语长笛',icon:'flute',attackSpeed:1.6,damage:14,range:3,piercing:true,areaAttack:false,shape:[[0,0]]},{id:'harp',name:'晨光竖琴',icon:'harp',attackSpeed:1,damage:28,range:1,piercing:true,areaAttack:false,shape:[[0,0]]},{id:'violin',name:'林间提琴',icon:'violin',attackSpeed:.85,damage:35,range:2,piercing:true,areaAttack:false,shape:[[0,0],[1,0]]},{id:'drum',name:'苔石小鼓',icon:'drum',attackSpeed:.5,damage:45,range:4,piercing:true,areaAttack:false,shape:[[0,0],[1,0],[0,1],[1,1]]}];
-const AREA_ATTACK=Object.freeze({ticks:3,damageRatio:.75,slowMultiplier:.75});
+const AREA_ATTACK=Object.freeze({ticks:3,slowMultiplier:.75});
 const copy=x=>JSON.parse(JSON.stringify(x));
 // Profiles created before the piercing switch keep the original all-target behavior.
 function normalizeInstrument(p){return {...copy(p),piercing:p.piercing??true,areaAttack:p.areaAttack??false};}
@@ -52,7 +52,7 @@ class Game{
      const band=Math.min(2,Math.floor(this.random()*3));
      this.areas.push({id:++this.seq,unitId:unit.id,lane,band,start:band/3,end:(band+1)/3,
        age:0,bornAt,duration,interval:duration/AREA_ATTACK.ticks,ticks:0,pulse:0,
-       damage:rate*AREA_ATTACK.damageRatio,clone:unit.clone});
+       damage:unit.profile.damage/AREA_ATTACK.ticks,clone:unit.clone});
    }
  }
  damageMonster(monster,damage){
