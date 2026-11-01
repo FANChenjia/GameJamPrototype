@@ -1,139 +1,98 @@
-/* Pure simulation: no DOM, rendering, or storage. Time is measured in seconds. */
-(function(global){
-const DEFAULTS={duration:120,spawnInterval:2.4,monsterHealth:65,travelTime:24,pointsPerSecond:2,killReward:12,initialPoints:120,speedBuff:25,rangeBuff:1,speedCost:40,rangeCost:50,cloneCost:80};
-const TEMPLATES=[{id:'flute',name:'风语长笛',icon:'flute',attackSpeed:1.6,damage:14,range:3,piercing:true,areaAttack:false,shape:[[0,0]]},{id:'harp',name:'晨光竖琴',icon:'harp',attackSpeed:1,damage:28,range:1,piercing:true,areaAttack:false,shape:[[0,0]]},{id:'violin',name:'林间提琴',icon:'violin',attackSpeed:.85,damage:35,range:2,piercing:true,areaAttack:false,shape:[[0,0],[1,0]]},{id:'drum',name:'苔石小鼓',icon:'drum',attackSpeed:.5,damage:45,range:4,piercing:true,areaAttack:false,shape:[[0,0],[1,0],[0,1],[1,1]]}];
-const AREA_ATTACK=Object.freeze({ticks:3,slowMultiplier:.75});
-const copy=x=>JSON.parse(JSON.stringify(x));
-// Profiles created before the piercing switch keep the original all-target behavior.
-function normalizeInstrument(p){return {...copy(p),piercing:p.piercing??true,areaAttack:p.areaAttack??false};}
-function normalize(shape){if(!shape.length)return [];let x=Math.min(...shape.map(p=>p[0])),y=Math.min(...shape.map(p=>p[1]));return shape.map(p=>[p[0]-x,p[1]-y]);}
-function validateTemplate(p){if(p.areaAttack!==undefined&&typeof p.areaAttack!=='boolean')return '范围攻击开关必须为开启或关闭。';if(p.piercing!==undefined&&typeof p.piercing!=='boolean')return '贯穿开关必须为开启或关闭。';if(!p.name?.trim())return '请给乐器起一个名字。';if(!Number.isFinite(p.attackSpeed)||p.attackSpeed<.05||p.attackSpeed>30)return '攻速需在 0.05–30 次 / 秒之间。';if(!Number.isInteger(p.damage)||p.damage<1||p.damage>10000)return '伤害需为 1–10000 的整数。';if(!Number.isInteger(p.range)||p.range<1||p.range>5)return '攻击范围需为 1–5 列的整数。';if(!Array.isArray(p.shape)||!p.shape.length)return '请至少选择一个占格。';let keys=new Set();for(const cell of p.shape){if(!Array.isArray(cell)||cell.length!==2||!cell.every(Number.isInteger)||cell[0]<0||cell[0]>4||cell[1]<0||cell[1]>3)return '占格必须位于 5×4 网格内。';let k=cell.join(',');if(keys.has(k))return '占格不能重复。';keys.add(k);}if(p.shape.length%2===0&&p.range%2!==0)return '偶数占格的乐器，攻击范围必须为 2 或 4 列。';let seen=new Set([p.shape[0].join(',')]),q=[p.shape[0]];while(q.length){let [x,y]=q.pop();for(let [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){let k=`${x+dx},${y+dy}`;if(keys.has(k)&&!seen.has(k)){seen.add(k);q.push([x+dx,y+dy]);}}}return seen.size!==keys.size?'占格需上下或左右相连。':'';}
-function validateConfig(c){const limits={duration:[5,3600],spawnInterval:[.1,60],monsterHealth:[1,100000],travelTime:[1,600],pointsPerSecond:[0,1000],killReward:[0,10000],initialPoints:[0,100000],speedBuff:[1,1000],rangeBuff:[1,4],speedCost:[0,10000],rangeCost:[0,10000],cloneCost:[0,10000]};for(const [key,[min,max]]of Object.entries(limits)){if(!Number.isFinite(c[key])||c[key]<min||c[key]>max)return `${key} 超出允许范围 ${min}–${max}。`;}for(const key of ['monsterHealth','killReward','initialPoints','rangeBuff','speedCost','rangeCost','cloneCost'])if(!Number.isInteger(c[key]))return `${key} 需要填写整数。`;return '';}
-class Game{
- constructor(config=DEFAULTS,random=Math.random){this.config=copy(config);this.random=random;this.units=[];this.seq=0;this.reset();}
- reset(){this.phase='ready';this.elapsed=0;this.points=this.config.initialPoints;this.kills=0;this.monsters=[];this.areas=[];this.bullets=[];this.effects=[];this.pulses=[];this.spawnClock=0;this.hand=[{id:++this.seq,type:'speed'},{id:++this.seq,type:'range'},{id:++this.seq,type:'clone'}];this.units=this.units.filter(u=>!u.clone).map(u=>({...u,profile:copy(u.original),speedBonus:0,rangeBonus:0,cooldown:0,flash:0}));this.result=null;}
- canPlace(p,col,row,ignoreId=null){return p.shape.every(([x,y])=>col+x>=0&&col+x<5&&row+y>=0&&row+y<4&&!this.units.some(u=>!u.clone&&u.id!==ignoreId&&u.profile.shape.some(([ux,uy])=>u.col+ux===col+x&&u.row+uy===row+y)));}
- move(id,col,row){let unit=this.units.find(u=>u.id===id&&!u.clone);if(!unit||!this.canPlace(unit.profile,col,row,id))return false;unit.col=col;unit.row=row;for(let clone of this.units.filter(u=>u.clone&&u.parent===id)){clone.col=col;clone.row=row;}return true;}
- place(p,col,row){if(!this.canPlace(p,col,row))return null;const profile=normalizeInstrument(p);let u={id:++this.seq,profile,original:copy(profile),col,row,speedBonus:0,rangeBonus:0,cooldown:0,flash:0,clone:false};this.units.push(u);return u;}
- at(col,row){return this.units.find(u=>!u.clone&&u.profile.shape.some(([x,y])=>u.col+x===col&&u.row+y===row));}
- center(u){let s=u.profile.shape;return {x:u.col+s.reduce((n,p)=>n+p[0]+.5,0)/s.length,row:u.row+s.reduce((n,p)=>n+p[1]+.5,0)/s.length};}
- attackSpeed(u){return u.profile.attackSpeed*(1+u.speedBonus);}
- attackRange(u){return Math.min(u.profile.shape.length%2===0?4:5,u.profile.range+u.rangeBonus);}
- lanes(u){
-   const range=this.attackRange(u),center=this.center(u).x,half=Math.floor(range/2);
-   let lanes=[];
-   if(range%2===0){
-     // Split an even range equally around the actual firing axis.
-     // A lane whose center is exactly on that axis is not a left or right lane.
-     const axis=center-.5;
-     const leftEnd=Math.ceil(axis)-1,rightStart=Math.floor(axis)+1;
-     for(let offset=0;offset<half;offset++)lanes.push(leftEnd-offset,rightStart+offset);
-   }else{
-     const anchor=Math.floor(center);
-     for(let offset=-half;offset<=half;offset++)lanes.push(anchor+offset);
-   }
-   // Clip at the battlefield edge; never move lost coverage to the other side.
-   return lanes.filter(lane=>lane>=0&&lane<5).sort((a,b)=>a-b);
- }
- remove(id){this.units=this.units.filter(u=>u.id!==id&&u.parent!==id);}
- buy(type){let cost=this.config[type+'Cost'];if(!Number.isFinite(cost)||!['speed','range','clone'].includes(type))return {ok:false,message:'未知的卡牌。'};if(this.points+1e-8<cost)return {ok:false,message:'协奏点还不够，再听一会儿风吧。'};if(this.hand.length>=30)return {ok:false,message:'手牌已满（30 张），先使用一些灵感吧。'};this.points=Math.max(0,this.points-cost);this.hand.push({id:++this.seq,type});return {ok:true,message:'一份新的灵感，已收入牌堆。'};}
- useCard(cardId,unitId){let card=this.hand.find(c=>c.id===cardId),u=this.units.find(u=>u.id===unitId);if(!card||!u)return {ok:false,message:'请先选择卡牌，再选择乐器。'};if(card.type==='speed')u.speedBonus+=this.config.speedBuff/100;
- if(card.type==='range'){let before=this.attackRange(u),next=Math.min(u.profile.shape.length%2===0?4:5,before+this.config.rangeBuff);if(u.profile.shape.length%2===0&&next%2)next++;next=Math.min(u.profile.shape.length%2===0?4:5,next);if(next===before)return {ok:false,message:'这件乐器的攻击范围已经达到上限。'};u.rangeBonus+=next-before;}
- if(card.type==='clone'){if(this.units.length>=80)return {ok:false,message:'乐团已达到 80 件乐器的演奏上限。'};this.units.push({...copy(u),id:++this.seq,clone:true,parent:u.clone?u.parent:u.id,cooldown:0,flash:.5});}
- this.hand=this.hand.filter(c=>c.id!==cardId);u.flash=.5;return {ok:true,message:card.type==='clone'?'回响出现，同一处多了一道旋律。':'灵感已生效，让旋律继续生长。'};}
- start(){if(this.phase==='ready'||this.phase==='paused')this.phase='running';}
+/* Fixed-step campaign simulation. Rendering never applies damage or advances timers. */
+(function (global) {
+'use strict';
+const D=global.ConcertoData, copy=x=>JSON.parse(JSON.stringify(x));
+const UNITS=Object.fromEntries(D.units.map(u=>[u.id,u])), CARDS=Object.fromEntries(D.cards.map(c=>[c.id,c]));
+const ok=(message='',extra={})=>({ok:true,message,...extra}), fail=message=>({ok:false,message});
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function seeded(seed=71){let value=seed>>>0;return ()=>{value+=0x6D2B79F5;let t=value;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;};}
+function weighted(field,random=Math.random){const pool=D.cards.filter(c=>c[field]>0),total=pool.reduce((n,c)=>n+c[field],0);let roll=random()*total;for(const c of pool){roll-=c[field];if(roll<0)return c.id;}return pool[pool.length-1].id;}
+function initialProgress(){return {version:2,rhythm:0,unlocked:0,cleared:[],shops:{}};}
+function settle(progress,level,result){const next=copy(progress);let reward=0;if(result.win&&!next.cleared.includes(level.id)){reward=level.reward+Math.floor((result.points+1e-7)/20);next.rhythm+=reward;next.cleared.push(level.id);next.unlocked=Math.min(9,Math.max(next.unlocked,level.index+1));}if(result.win)delete next.shops[level.id];return {progress:next,reward};}
+class Game {
+ constructor(level='1-1',options={}){this.level=copy(typeof level==='string'?D.levels.find(l=>l.id===level):level);if(!this.level)throw new Error('未知关卡');this.seed=options.seed??(771+this.level.index*101);this.prepaid=(options.prepaid||[]).filter(id=>CARDS[id]).slice(0,3);this.reset();}
+ reset(){this.random=seeded(this.seed);this.seq=0;this.phase='ready';this.elapsed=0;this.tick=0;this.buffer=0;this.wave=0;this.waveStart=0;this.points=this.level.initial;this.base=10;this.kills=0;this.units=[];this.monsters=[];this.areas=[];this.bullets=[];this.effects=[];this.pulses=[];this.offers=[];this.guarantee=null;this.freeRefresh=0;this.hand=[];this.pendingCards=[];this.result=null;this.arranging=false;this.dimUntil=0;this.config={duration:120,pointsPerSecond:this.level.income};this.stats={spent:0,leaks:0,cardUses:[],bossTimes:[],minPoints:this.points};this.giveCards(['Presto','Forte','Diminuendo',...this.prepaid]);this.prepareWave();if(this.level.island===1){for(let col=0;col<5;col++)this.place('lyra',col,2,{tutorial:true});}}
+ get waveElapsed(){return this.elapsed-this.waveStart;}
+ get currentWave(){return this.level.waves[this.wave];}
+ get permanentCount(){return this.units.filter(u=>!u.clone&&!u.profile.summon).length;}
+ get summonCount(){return this.units.filter(u=>!u.clone&&u.profile.summon).length;}
+ get canEdit(){return ['ready','intermission'].includes(this.phase)||this.arranging;}
+ prepareWave(){this.spawnIndex=0;this.bossSpawned=false;this.batchIndex=0;this.drawIndex=1;this.schedule=[];const count=this.currentWave.count;for(let b=0;b<6;b++){const n=Math.floor(count/6)+(b<count%6?1:0);for(let j=0;j<n;j++)this.schedule.push({at:b*(this.level.waveDuration-24)/5,lane:this.schedule.length%5});}this.offers=[];this.guarantee=null;}
+ start(){if(this.arranging||this.pendingCards.length)return false;if(['ready','paused','intermission'].includes(this.phase)){this.phase='running';return true;}return false;}
  pause(){if(this.phase==='running')this.phase='paused';}
- spawn(){let max=this.config.monsterHealth;this.monsters.push({id:++this.seq,lane:Math.floor(this.random()*5),y:0,hp:max,maxHp:max,variant:Math.floor(this.random()*3),wobble:this.random()*6.28,hit:0,slowed:false});}
- areaContains(area,monster){return area.lane===monster.lane&&monster.y>=area.start&&monster.y<area.end;}
- refreshSlows(){for(const monster of this.monsters)monster.slowed=this.areas.some(area=>area.ticks<AREA_ATTACK.ticks&&this.areaContains(area,monster));}
- createDamageAreas(unit,lanes,rate,bornAt=this.elapsed){
-   const duration=1/rate;
-   for(const lane of lanes){
-     const band=Math.min(2,Math.floor(this.random()*3));
-     this.areas.push({id:++this.seq,unitId:unit.id,lane,band,start:band/3,end:(band+1)/3,
-       age:0,bornAt,duration,interval:duration/AREA_ATTACK.ticks,ticks:0,pulse:0,
-       damage:unit.profile.damage/AREA_ATTACK.ticks,clone:unit.clone});
-   }
- }
- damageMonster(monster,damage){
-   if(!monster||monster.hp<=0)return;
-   monster.hp-=damage;
-   if(monster.hp<1e-9)monster.hp=0;
-   monster.hit=.24;
-   this.effects.push({x:monster.lane+.5,y:monster.y,t:0,life:.4,burst:true,color:'#f4e4a1'});
-   this.effects.push({x:monster.lane+.5,y:monster.y,t:0,life:.65,text:`−${Number(damage.toFixed(3))}`,color:'#5f7050'});
-   if(monster.hp<=0){
-     this.kills++;this.points+=this.config.killReward;
-     this.effects.push({x:monster.lane+.5,y:monster.y,t:0,life:.8,text:`+${this.config.killReward} ✦`,color:'#967a38'});
-   }
- }
- updateAreas(dt){
-   for(const area of this.areas){
-     area.age=Math.min(area.duration,Math.max(0,this.elapsed-area.bornAt));
-     area.pulse=Math.max(0,area.pulse-dt);
-     while(area.ticks<AREA_ATTACK.ticks&&area.age+1e-9>=(area.ticks+1)*area.interval){
-       area.ticks++;area.pulse=.22;
-       // Sample current occupants at each tick; entering or leaving changes who is hit.
-       for(const monster of this.monsters){
-         if(monster.hp>0&&this.areaContains(area,monster))this.damageMonster(monster,area.damage);
-       }
-     }
-   }
-   this.areas=this.areas.filter(area=>area.ticks<AREA_ATTACK.ticks);
-   this.refreshSlows();
- }
-
- finish(win){this.phase=win?'won':'lost';this.result={win,time:this.elapsed,kills:this.kills,points:Math.floor(this.points)};}
- update(dt){if(this.phase!=='running')return;dt=Math.min(dt,1/30);const effective=Math.min(dt,Math.max(0,this.config.duration-this.elapsed));if(!effective){this.finish(true);return;}dt=effective;this.elapsed+=dt;this.points+=this.config.pointsPerSecond*dt;this.spawnClock+=dt;
- while(this.spawnClock>=this.config.spawnInterval){this.spawnClock-=this.config.spawnInterval;this.spawn();}
- this.refreshSlows();
- for(let m of this.monsters){m.y+=dt/this.config.travelTime*(m.slowed?AREA_ATTACK.slowMultiplier:1);m.hit=Math.max(0,m.hit-dt);if(m.y>=1){this.finish(false);return;}}
- // Piercing attacks hit every living target; single-target attacks hit the frontmost one.
- // All notes use the same lifetime, so a volley lands simultaneously regardless of distance.
- for(const u of this.units){
-   u.cooldown-=dt;
-   u.flash=Math.max(0,u.flash-dt);
-   if(u.cooldown>1e-9)continue;
-   const lanes=this.lanes(u);
-   const rate=this.attackSpeed(u);
-   if(u.profile.areaAttack){
-     if(!lanes.length){u.cooldown=0;continue;}
-     const castAt=this.elapsed+Math.min(0,u.cooldown);
-     u.cooldown=Math.max(0,u.cooldown+1/rate);
-     u.flash=.28;
-     const center=this.center(u);
-     this.pulses.push({unitId:u.id,x:center.x,y:(.65+center.row*.08-.04)/.56,lanes:[],t:0,life:.5,clone:u.clone});
-     this.createDamageAreas(u,lanes,rate,castAt);
-     continue;
-   }
-   const candidates=this.monsters.filter(m=>m.hp>0&&lanes.includes(m.lane));
-   if(!candidates.length){u.cooldown=0;continue;}
-   // Larger y means closer to the defense line. A stable tie keeps the older target.
-   const targets=u.profile.piercing===false
-     ? [candidates.reduce((front,monster)=>monster.y>front.y?monster:front)]
-     : candidates;
-   const center=this.center(u);
-   const origin={x:center.x,y:(.65+center.row*.08-.04)/.56};
-   // Attack speed belongs to the whole volley, not to individual targets or lanes.
-   u.cooldown=Math.max(0,u.cooldown+1/rate);
-   u.flash=.28;
-   this.pulses.push({unitId:u.id,...origin,lanes:u.profile.piercing===false?[targets[0].lane]:lanes,t:0,life:.5,clone:u.clone});
-   for(const target of targets){
-     this.bullets.push({id:++this.seq,unitId:u.id,targetId:target.id,from:{...origin},
-       to:{x:target.lane+.5,y:target.y},t:0,life:.3,damage:u.profile.damage,
-       clone:u.clone,note:this.random()>.5?'♪':'♫'});
-   }
- }
-
- for(const bullet of this.bullets){
-   bullet.t+=dt;
-   const target=this.monsters.find(monster=>monster.id===bullet.targetId);
-   if(target)bullet.to={x:target.lane+.5,y:target.y};
-   if(bullet.t>=bullet.life)this.damageMonster(target,bullet.damage);
- }
- this.updateAreas(dt);
- this.bullets=this.bullets.filter(b=>b.t<b.life);this.monsters=this.monsters.filter(m=>m.hp>0);for(let e of this.effects)e.t+=dt;this.effects=this.effects.filter(e=>e.t<e.life);for(let p of this.pulses)p.t+=dt;this.pulses=this.pulses.filter(p=>p.t<p.life);if(this.elapsed>=this.config.duration-1e-8){this.elapsed=this.config.duration;this.finish(true);}}
- advance(seconds){let remaining=seconds;while(remaining>1e-8&&this.phase==='running'){let dt=Math.min(remaining,1/60);this.update(dt);remaining-=dt;}}
+ profile(p){return typeof p==='string'?UNITS[p]:p;}
+ lanes(u){if(u.profile.family==='percussion'||this.active(u,'Infinite'))return [0,1,2,3,4];return Array.from({length:u.profile.width},(_,i)=>u.col+i);}
+ naturalLanes(u){return Array.from({length:u.profile.width},(_,i)=>u.col+i);}
+ center(u){return {x:u.col+u.profile.width/2,row:u.row+u.profile.height/2};}
+ at(col,row){return this.units.find(u=>!u.clone&&u.profile.shape.some(([x,y])=>u.col+x===col&&u.row+y===row));}
+ canPlace(p,col,row,ignoreId=null){p=this.profile(p);if(!p||!Number.isInteger(col)||!Number.isInteger(row))return false;const moving=this.units.find(u=>u.id===ignoreId);if(!moving){if(p.summon?this.summonCount>=2:this.permanentCount>=this.level.cap)return false;if(!p.summon&&p.unlock>this.level.island)return false;}if(!p.shape.every(([x,y])=>col+x>=0&&col+x<5&&row+y>=0&&row+y<4&&!this.units.some(u=>!u.clone&&u.id!==ignoreId&&u.profile.shape.some(([a,b])=>u.col+a===col+x&&u.row+b===row+y))))return false;if(p.family==='bowed'){const lanes=Array.from({length:p.width},(_,i)=>col+i);if(this.units.some(u=>!u.clone&&u.id!==ignoreId&&u.profile.family==='bowed'&&this.naturalLanes(u).some(l=>lanes.includes(l))))return false;}return true;}
+ place(p,col,row,options={}){p=this.profile(p);this.lastError='';if(!p){this.lastError='未知乐器';return null;}if(['won','lost'].includes(this.phase)||this.arranging&&!options.tutorial){this.lastError='当前不能新布置乐器';return null;}if(p.summon&&!options.summon){this.lastError='需要对应召唤牌';return null;}if(!this.canPlace(p,col,row)){this.lastError='检查空格、乐器上限或共振覆盖列';return null;}if(!options.free&&this.points+1e-7<p.cost){this.lastError='协奏点不足';return null;}if(!options.free){this.points-=p.cost;this.stats.spent+=p.cost;}const u={id:++this.seq,profile:copy(p),col,row,permSpeed:0,speedBonus:0,rangeBonus:0,progress:0,attacks:0,hits:0,buffs:{},flash:0,clone:false,expires:p.summon&&p.id!=='suona'?this.wave:null};this.units.push(u);return u;}
+ move(id,col,row){const u=this.units.find(u=>u.id===id&&!u.clone);if(!u||!this.canEdit||this.level.island===1||!this.canPlace(u.profile,col,row,id))return false;u.col=col;u.row=row;for(const clone of this.units.filter(x=>x.parent===id)){clone.col=col;clone.row=row;}return true;}
+ remove(id){const ids=new Set(this.units.filter(u=>u.id===id||u.parent===id).map(u=>u.id));this.units=this.units.filter(u=>!ids.has(u.id));this.areas=this.areas.filter(a=>!ids.has(a.unitId));for(const m of this.monsters)m.marks=(m.marks||[]).filter(mark=>!ids.has(mark.source));}
+ sell(id){const u=this.units.find(u=>u.id===id&&!u.clone);if(!u||this.phase!=='intermission'||this.arranging||this.level.island===1||u.profile.summon)return fail('仅波间可以出售常驻乐器');const refund=Math.floor(u.profile.cost/2);this.remove(id);this.points+=refund;return ok(`返还 ${refund} 协奏点`);}
+ active(u,id){return (u.buffs[id]||0)>this.elapsed+1e-8;}
+ windCount(){return this.units.filter(u=>!u.clone&&u.profile.family==='wind').length;}
+ windFactor(u){if(u.profile.family!=='wind')return 1;if(u.clone)return u.windSnapshot;let bonus=0;const has=id=>this.units.some(x=>!x.clone&&x.profile.id===id);if(u.profile.id==='flute'&&has('oboe')||u.profile.id==='oboe'&&has('flute'))bonus=.25;if(u.profile.id==='trumpet'&&has('euphonium'))bonus=1.5;return 1+.25*this.windCount()+bonus;}
+ attackSpeed(u){const temp=(this.active(u,'Presto')?.25:0)+(this.active(u,'Prestissimo')?1:0)+(this.active(u,'Cadenza')?.5:0);const penalty=u.profile.id==='trumpet'&&(u.clone?u.trumpetSnapshot:this.units.some(x=>!x.clone&&x.profile.id==='euphonium'))?.5:1;return u.profile.attackSpeed*(1+Math.min(1,u.permSpeed))*(1+temp)*penalty;}
+ directDamage(u){return u.profile.damage*this.windFactor(u)*(this.active(u,'Forte')?1.5:1)*(u.clone?.5:1);}
+ card(type){return {id:++this.seq,type};}
+ giveCards(types){const incoming=types.map(type=>this.card(type));if(this.hand.length+incoming.length>8)this.pendingCards.push(...incoming);else this.hand.push(...incoming);}
+ resolveOverflow(keep){const all=[...this.hand,...this.pendingCards];if(keep.length>8||new Set(keep).size!==keep.length||keep.some(id=>!all.some(c=>c.id===id)))return fail('最多保留 8 张牌');this.hand=all.filter(c=>keep.includes(c.id));this.pendingCards=[];return ok();}
+ discard(id){const before=this.hand.length;this.hand=this.hand.filter(c=>c.id!==id);return before!==this.hand.length;}
+ pity(second){if(this.level.island>=3){if(second===4)return 'Rondo';if(second===8)return 'Cadenza';if(second===12)return 'Forte';}if(this.level.island>=3&&second===16)return 'Infinite';if(this.level.island===5&&second===24)return 'Rondo';return null;}
+ rollOffers(manual=false){if(manual&&(['won','lost'].includes(this.phase)||this.arranging||this.pendingCards.length))return fail('当前不能刷新');if(manual){if(this.freeRefresh)this.freeRefresh--;else if(this.points+1e-7>=6){this.points-=6;this.stats.spent+=6;}else return fail('刷新需要 6 协奏点');}this.offers=Array.from({length:3},()=>this.card(weighted('weight',this.random)));if(this.guarantee)this.offers[0]=this.card(this.guarantee);return ok();}
+ claimOffer(index){if(['won','lost'].includes(this.phase))return fail('本关已结束');if(this.pendingCards.length)return fail('先整理手牌');const c=this.offers[index];if(!c)return fail('本次抽选已结束');this.giveCards([c.type]);this.offers=[];this.guarantee=null;return ok('已收入手牌');}
+ beginArrangement(card){if(this.level.island===1)return fail('教学乐器不可移动');if(this.arranging)return fail('请先完成重排');this.arranging=true;this.arrangeCard=card.id;this.arrangeBackup=this.units.map(u=>({id:u.id,col:u.col,row:u.row}));return ok('移动乐器后确认重排',{arrange:true});}
+ endArrangement(commit){if(!this.arranging)return fail('没有进行中的重排');if(commit){const c=this.hand.find(c=>c.id===this.arrangeCard);if(!c||this.points+1e-7<CARDS[c.type].cost)return fail('协奏点不足');this.points-=CARDS[c.type].cost;this.stats.spent+=CARDS[c.type].cost;this.hand=this.hand.filter(x=>x.id!==c.id);this.stats.cardUses.push({type:c.type,at:this.elapsed});}else for(const p of this.arrangeBackup){const u=this.units.find(u=>u.id===p.id);if(u)Object.assign(u,{col:p.col,row:p.row});}this.arranging=false;this.arrangeBackup=null;return ok(commit?'重排完成':'已取消');}
+ useCard(id,target){const card=this.hand.find(c=>c.id===id),c=card&&CARDS[card.type];if(!c)return fail('卡牌已不在手中');if(['won','lost','intermission'].includes(this.phase)||this.arranging||this.pendingCards.length)return fail('当前不能打出牌');if(this.points+1e-7<c.cost)return fail(`需要 ${c.cost} 协奏点`);const u=this.units.find(u=>u.id===(typeof target==='object'?target.unitId:target)&&!u.clone);if(c.target==='unit'&&!u)return fail('请选择一件真实乐器');if(c.id==='Resonance'&&!['lyra','harp','guqin','suona','snare','gong'].includes(u.profile.id))return fail('这件乐器没有可立即释放的技能');if(c.target==='arrange')return this.beginArrangement(card);if(c.summon){if(!target||!this.canPlace(c.summon,target.col,target.row))return fail('召唤需要空格和空名额');}
+ this.points-=c.cost;this.stats.spent+=c.cost;this.hand=this.hand.filter(x=>x.id!==id);this.stats.cardUses.push({type:c.id,at:this.elapsed});
+ if(c.summon){this.place(c.summon,target.col,target.row,{summon:true,free:true});return ok('召唤完成');}
+ if(['Presto','Prestissimo'].includes(c.id))u.buffs[c.id]=this.elapsed+5;
+ if(c.id==='Sforzando')u.sforzando=true;
+ if(c.id==='Resonance')this.skill(u,true);
+ const durations={Cadenza:10,Forte:10,Syncopation:10,Rondo:10,Rhapsody:5,Infinite:5};
+ if(durations[c.id])for(const x of this.units.filter(x=>!x.clone))x.buffs[c.id]=this.elapsed+durations[c.id];
+ if(c.id==='Diminuendo')this.dimUntil=this.elapsed+5;
+ if(c.id==='Fermata')for(const m of this.monsters)m.freezeUntil=this.elapsed+3;
+ if(c.id==='Requiem')for(const m of [...this.monsters])this.damageMonster(m,m.maxHp-m.hp,{});
+ if(c.id==='Improvisation')this.giveCards([weighted('weight',this.random),weighted('weight',this.random)]);
+ if(c.id==='Deduction')this.freeRefresh++;
+ if(c.id==='Duet'){const clone=copy(u);Object.assign(clone,{id:++this.seq,clone:true,parent:u.id,until:this.elapsed+10,progress:0,attacks:0,hits:0,flash:.3,windSnapshot:this.windFactor(u),trumpetSnapshot:this.units.some(x=>!x.clone&&x.profile.id==='euphonium'),sforzando:false});this.units.push(clone);}
+ return ok('奏法已生效');}
+ spawn(lane,boss=false){const p=this.currentWave,maxHp=boss?p.bossHp:p.hp;const shield=!boss&&this.level.island>=3&&this.spawnIndex<Math.floor(p.count*.2)?maxHp*.2:0;const m={id:++this.seq,lane,y:0,hp:maxHp,maxHp,shield,maxShield:shield,boss,variant:boss?1:(this.spawnIndex%3),wobble:this.random()*6.28,hit:0,slowed:false,slow:0,marks:[],born:this.elapsed,stunUntil:0,freezeUntil:0,vulnerableUntil:0};this.monsters.push(m);return m;}
+ front(lane){let front=null;for(const m of this.monsters)if(m.hp>0&&m.lane===lane&&(!front||m.y>front.y+1e-9))front=m;return front;}
+ addArea(unit,lane,center,kind='bow'){const start=clamp(center-1/6,0,2/3),key=kind==='rhapsody'?`r:${lane}`:`b:${unit.id}:${lane}`;let a=this.areas.find(a=>a.key===key);if(a){a.start=start;a.end=start+1/3;a.until=this.elapsed+(kind==='bow'?.5:2);a.pulse=.22;return a;}a={id:++this.seq,key,kind,lane,start,end:start+1/3,unitId:unit.id,bornAt:this.elapsed,until:this.elapsed+(kind==='bow'?.5:2),duration:kind==='bow'?.5:2,nextTick:this.elapsed+.5,slow:kind==='rhapsody'?.15:({violin:.15,viola:.25,cello:.4}[unit.profile.id]||.15),pulse:.22,ticks:0,clone:false};this.areas.push(a);return a;}
+ areaContains(a,m){return a.lane===m.lane&&m.y>=a.start-1e-9&&m.y<=a.end+1e-9;}
+ stun(){for(const m of this.monsters)if(m.hp>0)m.stunUntil=Math.max(m.stunUntil,this.elapsed+1);}
+ damageMonster(m,damage,{source=null,bypass=false,mark=false}={}){if(!m||m.hp<=0||damage<=0)return 0;damage*=m.vulnerableUntil>this.elapsed?1.25:1;const old=m.hp,absorbed=bypass?0:Math.min(m.shield||0,damage);m.shield=Math.max(0,(m.shield||0)-absorbed);m.hp=Math.max(0,m.hp-damage+absorbed);const lost=old-m.hp;m.hit=.2;if(!mark)for(const tag of m.marks||[])tag.damage+=lost;
+ if(source&&!source.clone&&source.profile.family==='percussion'){source.hits++;while(source.hits>=100){source.hits-=100;this.stun();}}
+ this.effects.push({x:m.lane+.5,y:m.y,t:0,life:.4,burst:true,color:'#f4e4a1'});if(damage>=8)this.effects.push({x:m.lane+.5,y:m.y,t:0,life:.55,text:`−${Math.round(damage)}`,color:'#5f7050'});
+ if(m.hp<=0&&!m.rewarded){m.rewarded=true;this.kills++;const reward=m.boss?10:2;this.points+=reward;if(m.boss)this.stats.bossTimes.push({wave:this.wave,time:this.elapsed-m.born});this.effects.push({x:m.lane+.5,y:m.y,t:0,life:.7,text:`+${reward} ✦`,color:'#967a38'});}return lost;}
+ mark(u,m){if(m.hp>0&&!m.marks.some(t=>t.source===u.id))m.marks.push({source:u.id,until:this.elapsed+10,damage:0});}
+ skill(u,forced=false){const id=u.profile.id,covered=this.naturalLanes(u);if(id==='lyra')for(const m of this.monsters)if(m.hp>0&&covered.includes(m.lane))m.vulnerableUntil=this.elapsed+10;if(id==='harp'&&forced)u.permSpeed=Math.min(1,u.permSpeed+.01);if(id==='guqin'&&forced)for(const m of this.monsters)if(covered.includes(m.lane))this.mark(u,m);if(id==='suona'){const m=this.front(covered[0]);if(m){if(m.boss)this.damageMonster(m,m.maxHp*.03,{source:u,bypass:true});else {m.shield=0;this.damageMonster(m,m.hp,{source:u,bypass:true});}}}if(id==='snare'){const pool=this.units.filter(x=>!x.clone&&x.profile.family!=='percussion');if(pool.length){const x=pool[Math.floor(this.random()*pool.length)];x.permSpeed=Math.min(1,x.permSpeed+.1);}}if(u.profile.family==='percussion')this.stun();}
+ attack(u){const lanes=this.lanes(u),all=this.monsters.filter(m=>m.hp>0&&lanes.includes(m.lane));if(!all.length)return false;u.attacks++;u.flash=.25;let targets=[];if(u.profile.family==='percussion'||u.profile.piercing)targets=all;else if(!u.profile.areaAttack)targets=lanes.map(l=>this.front(l)).filter(Boolean);
+ if(u.profile.areaAttack){for(const lane of lanes){const front=this.front(lane);if(!front)continue;const competitors=this.units.filter(x=>!x.clone&&x.profile.areaAttack&&this.lanes(x).includes(lane));const lead=competitors.sort((a,b)=>this.directDamage(b)*this.attackSpeed(b)-this.directDamage(a)*this.attackSpeed(a)||a.id-b.id)[0];if(!u.clone&&lead&&lead.id!==u.id)continue;const start=clamp(front.y-1/6,0,2/3);if(!u.clone)this.addArea(u,lane,front.y);targets.push(...all.filter(m=>m.lane===lane&&m.y>=start-1e-9&&m.y<=start+1/3+1e-9));}}
+ const power=this.directDamage(u)*(u.sforzando?10:1),bypass=this.active(u,'Syncopation'),segments=u.profile.id==='marimba'?[1,2,3,4,5,6,7]:[null];
+ for(const m of targets){for(const segment of segments){const amount=segment===null?power:power*segment/28;this.damageMonster(m,amount,{source:u,bypass});}if(this.active(u,'Rondo'))this.damageMonster(m,m.maxHp*(m.boss?.002:.02)*(u.clone?.5:1),{source:u,bypass});if(u.profile.id==='guqin'&&!u.clone)this.mark(u,m);}
+ if(!u.clone&&this.active(u,'Rhapsody'))for(const lane of lanes){const front=this.front(lane)||targets.find(m=>m.lane===lane);if(front)this.addArea(u,lane,front.y,'rhapsody');}
+ if(!u.clone){if(u.profile.id==='harp')u.permSpeed=Math.min(1,u.permSpeed+.01);if(u.profile.id==='lyra'&&u.attacks%10===0)this.skill(u);if(['snare','suona'].includes(u.profile.id)&&u.attacks%5===0)this.skill(u);if(u.profile.id==='gong')this.skill(u);}
+ u.sforzando=false;const center=this.center(u),origin={x:center.x,y:(.65+center.row*.08-.04)/.56};this.pulses.push({unitId:u.id,...origin,lanes,t:0,life:.4,clone:u.clone});for(const m of targets.slice(0,8))this.bullets.push({id:++this.seq,unitId:u.id,from:{...origin},to:{x:m.lane+.5,y:m.y},t:0,life:.22,note:'♪',clone:u.clone});return true;}
+ finish(win,reason=''){for(const u of [...this.units])if(u.clone||u.profile.summon)this.remove(u.id);this.offers=[];this.guarantee=null;this.phase=win?'won':'lost';this.buffer=0;this.result={win,reason,time:this.elapsed,kills:this.kills,points:this.points,base:this.base,stats:copy(this.stats)};}
+ endWave(){if(this.monsters.some(m=>m.hp>0)||this.base<=0){this.finish(false,'未能在本波结束前清场');return;}for(const u of [...this.units])if(!u.clone&&u.expires===this.wave)this.remove(u.id);this.offers=[];this.guarantee=null;if(this.wave===this.level.waves.length-1)this.finish(true);else {this.wave++;this.waveStart=this.elapsed;this.prepareWave();this.phase='intermission';}}
+ step(){const dt=.01,t=this.elapsed,w=this.waveElapsed;this.points=Math.round((this.points+this.level.income*dt)*1000)/1000;
+ while(this.batchIndex<this.schedule.length&&this.schedule[this.batchIndex].at<=w+1e-7){this.spawn(this.schedule[this.batchIndex].lane);this.spawnIndex++;this.batchIndex++;}
+ if(!this.bossSpawned&&w+1e-7>=this.level.waveDuration-20){this.spawn(this.currentWave.bossLane,true);this.bossSpawned=true;}
+ while(this.drawIndex*4<=w+1e-7&&this.drawIndex*4<this.level.waveDuration){this.guarantee=this.pity(this.drawIndex*4);this.rollOffers();this.drawIndex++;}
+ for(const u of [...this.units])if(u.clone&&u.until<=t+1e-8)this.remove(u.id);
+ this.areas=this.areas.filter(a=>a.until>t+1e-8);for(const a of this.areas){a.age=t-a.bornAt;a.pulse=Math.max(0,a.pulse-dt);if(a.kind==='rhapsody')while(a.nextTick<=t+1e-8){a.nextTick+=.5;a.ticks++;for(const m of this.monsters)if(m.hp>0&&this.areaContains(a,m)&&!this.areas.some(b=>b.kind==='bow'&&this.areaContains(b,m)))this.damageMonster(m,7.5,{});}}
+ for(const m of this.monsters)for(const tag of [...m.marks])if(tag.until<=t+1e-8){m.marks=m.marks.filter(x=>x!==tag);this.damageMonster(m,tag.damage*.3,{mark:true});}
+ for(const u of this.units){u.flash=Math.max(0,u.flash-dt);u.speedBonus=u.permSpeed;const hasTarget=this.monsters.some(m=>m.hp>0&&this.lanes(u).includes(m.lane));if(!hasTarget)continue;u.progress+=this.attackSpeed(u)*dt;while(u.progress>=1-1e-8){u.progress-=1;if(!this.attack(u)){u.progress=Math.max(0,u.progress);break;}}}
+ for(const m of this.monsters){if(m.hp<=0)continue;const zoneSlow=Math.max(0,...this.areas.filter(a=>this.areaContains(a,m)).map(a=>a.slow));m.slow=Math.min(.6,zoneSlow+(this.dimUntil>t?.3:0));m.slowed=m.slow>0;const frozen=m.freezeUntil>t||m.stunUntil>t;m.y+=frozen?0:dt/(m.boss?20:36)*(1-m.slow);m.hit=Math.max(0,m.hit-dt);if(m.y>=1-1e-8){m.hp=0;this.base-=m.boss?10:1;this.stats.leaks++;}}
+ this.monsters=this.monsters.filter(m=>m.hp>0);for(const e of this.effects)e.t+=dt;this.effects=this.effects.filter(e=>e.t<e.life).slice(-160);for(const e of this.pulses)e.t+=dt;this.pulses=this.pulses.filter(e=>e.t<e.life).slice(-60);for(const e of this.bullets)e.t+=dt;this.bullets=this.bullets.filter(e=>e.t<e.life).slice(-140);
+ this.tick++;this.elapsed=this.tick/100;this.stats.minPoints=Math.min(this.stats.minPoints,this.points);if(this.base<=0){this.finish(false,'防线失守');return;}if(this.elapsed-this.waveStart>=this.level.waveDuration-1e-7)this.endWave();}
+ update(dt){if(this.phase!=='running'||!Number.isFinite(dt)||dt<=0)return;this.buffer+=dt;while(this.buffer>=.01-1e-9&&this.phase==='running'){this.buffer-=.01;this.step();}if(this.phase!=='running')this.buffer=0;}
+ advance(seconds){this.update(seconds);}
+ snapshot(){return copy({level:this.level.id,phase:this.phase,wave:this.wave,elapsed:this.elapsed,points:this.points,base:this.base,units:this.units,monsters:this.monsters,hand:this.hand,offers:this.offers,result:this.result});}
 }
-global.Meadow={Game,DEFAULTS,TEMPLATES,AREA_ATTACK,copy,normalize,normalizeInstrument,validateTemplate,validateConfig};
+global.Meadow={Game,DATA:D,UNITS,CARDS,copy,seeded,weighted,initialProgress,settle};
 })(typeof window!=='undefined'?window:globalThis);
