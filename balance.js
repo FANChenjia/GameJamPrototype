@@ -31,7 +31,8 @@ global.ConcertoData = {
           0,
           0
         ]
-      ]
+      ],
+      "description": "贯穿所在列的全部敌人。每 10 次普攻使该列敌人受到伤害提高 25%，持续 10 秒。"
     },
     {
       "id": "harp",
@@ -57,7 +58,8 @@ global.ConcertoData = {
           1,
           0
         ]
-      ]
+      ],
+      "description": "贯穿横向两列的全部敌人。每次普攻永久增加 1% 攻速，本关最多增加 100%。"
     },
     {
       "id": "guqin",
@@ -87,7 +89,8 @@ global.ConcertoData = {
           2,
           0
         ]
-      ]
+      ],
+      "description": "贯穿横向三列，并施加 10 秒印记；到期追加期间生命伤害的 30%。召唤后持续至本波结束。"
     },
     {
       "id": "flute",
@@ -109,7 +112,8 @@ global.ConcertoData = {
           0,
           0
         ]
-      ]
+      ],
+      "description": "攻击所在列最前排敌人。每件真实吹奏乐器提供 25% 协奏增伤；双簧管在场再增加 25%。"
     },
     {
       "id": "oboe",
@@ -131,7 +135,8 @@ global.ConcertoData = {
           0,
           0
         ]
-      ]
+      ],
+      "description": "攻击所在列最前排敌人。每件真实吹奏乐器提供 25% 协奏增伤；长笛在场再增加 25%。"
     },
     {
       "id": "trumpet",
@@ -153,7 +158,8 @@ global.ConcertoData = {
           0,
           0
         ]
-      ]
+      ],
+      "description": "攻击所在列最前排敌人，享受吹奏协奏。上低音号在场时额外增加 150% 伤害，最终攻速减半。"
     },
     {
       "id": "euphonium",
@@ -187,7 +193,8 @@ global.ConcertoData = {
           1,
           1
         ]
-      ]
+      ],
+      "description": "占据 2×2 格，每次对横向两列各攻击一个前排敌人，享受吹奏协奏，并强化场上的小号。"
     },
     {
       "id": "suona",
@@ -209,7 +216,8 @@ global.ConcertoData = {
           0,
           0
         ]
-      ]
+      ],
+      "description": "享受吹奏协奏，无基础伤害。每 5 次普攻净化一个前排普通敌人；对 Boss 改为造成最大生命 3% 伤害。持续至本关结束。"
     },
     {
       "id": "snare",
@@ -231,7 +239,8 @@ global.ConcertoData = {
           0,
           0
         ]
-      ]
+      ],
+      "description": "普攻打击全场敌人。每 5 次普攻使随机一件非打击乐器永久增加 10% 攻速；累计 100 次伤害或释放技能使全场晕眩 1 秒。"
     },
     {
       "id": "shaker",
@@ -253,7 +262,8 @@ global.ConcertoData = {
           0,
           0
         ]
-      ]
+      ],
+      "description": "以每秒 5 次的频率打击全场敌人。累计 100 次伤害触发重音，使全场晕眩 1 秒。"
     },
     {
       "id": "marimba",
@@ -291,7 +301,8 @@ global.ConcertoData = {
           4,
           0
         ]
-      ]
+      ],
+      "description": "横占一整行，普攻对全场每个敌人连续造成 7 段、合计 28 点伤害。每段计入重音，累计 100 次使全场晕眩 1 秒。"
     },
     {
       "id": "gong",
@@ -313,7 +324,8 @@ global.ConcertoData = {
           0,
           0
         ]
-      ]
+      ],
+      "description": "每次普攻打击全场敌人，并释放技能使全场晕眩 1 秒。召唤后持续至本波结束。"
     },
     {
       "id": "violin",
@@ -335,7 +347,8 @@ global.ConcertoData = {
           0,
           0
         ]
-      ]
+      ],
+      "description": "在所在列前排敌人周围形成路径长度 1/3 的区域，伤害区域内敌人并减速 15%。每列只能由一件常驻拉弦乐器覆盖。"
     },
     {
       "id": "viola",
@@ -361,7 +374,8 @@ global.ConcertoData = {
           1,
           0
         ]
-      ]
+      ],
+      "description": "横向覆盖两列，各自在前排周围形成路径长度 1/3 的区域，伤害并减速 25%。覆盖列不能与其他常驻拉弦重叠。"
     },
     {
       "id": "cello",
@@ -391,7 +405,8 @@ global.ConcertoData = {
           2,
           0
         ]
-      ]
+      ],
+      "description": "横向覆盖三列，各自在前排周围形成路径长度 1/3 的区域，伤害并减速 40%。覆盖列不能与其他常驻拉弦重叠。"
     }
   ],
   "cards": [
@@ -650,10 +665,11 @@ global.ConcertoData = {
       "reward": 10,
       "waves": [
         {
-          "count": 10,
-          "hp": 45,
+          "count": 45,
+          "hp": 30,
           "bossHp": 180,
-          "bossLane": 2
+          "bossLane": 2,
+          "normalRewardBudget": 20
         }
       ]
     },
@@ -670,16 +686,18 @@ global.ConcertoData = {
       "reward": 14,
       "waves": [
         {
-          "count": 16,
-          "hp": 90,
+          "count": 48,
+          "hp": 30.0,
           "bossHp": 900,
-          "bossLane": 2
+          "bossLane": 2,
+          "normalRewardBudget": 32
         },
         {
-          "count": 18,
-          "hp": 110,
+          "count": 54,
+          "hp": 36.667,
           "bossHp": 1100,
-          "bossLane": 0
+          "bossLane": 0,
+          "normalRewardBudget": 36
         }
       ]
     },
@@ -696,16 +714,18 @@ global.ConcertoData = {
       "reward": 14,
       "waves": [
         {
-          "count": 20,
-          "hp": 130,
+          "count": 60,
+          "hp": 43.333,
           "bossHp": 1250,
-          "bossLane": 2
+          "bossLane": 2,
+          "normalRewardBudget": 40
         },
         {
-          "count": 22,
-          "hp": 150,
+          "count": 66,
+          "hp": 50.0,
           "bossHp": 1350,
-          "bossLane": 0
+          "bossLane": 0,
+          "normalRewardBudget": 44
         }
       ]
     },
@@ -722,16 +742,18 @@ global.ConcertoData = {
       "reward": 18,
       "waves": [
         {
-          "count": 26,
-          "hp": 240,
+          "count": 78,
+          "hp": 80.0,
           "bossHp": 27000,
-          "bossLane": 2
+          "bossLane": 2,
+          "normalRewardBudget": 52
         },
         {
-          "count": 30,
-          "hp": 270,
+          "count": 90,
+          "hp": 90.0,
           "bossHp": 27500,
-          "bossLane": 0
+          "bossLane": 0,
+          "normalRewardBudget": 60
         }
       ]
     },
@@ -748,16 +770,18 @@ global.ConcertoData = {
       "reward": 18,
       "waves": [
         {
-          "count": 32,
-          "hp": 300,
+          "count": 96,
+          "hp": 100.0,
           "bossHp": 28000,
-          "bossLane": 2
+          "bossLane": 2,
+          "normalRewardBudget": 64
         },
         {
-          "count": 36,
-          "hp": 330,
+          "count": 108,
+          "hp": 110.0,
           "bossHp": 28500,
-          "bossLane": 0
+          "bossLane": 0,
+          "normalRewardBudget": 72
         }
       ]
     },
@@ -774,22 +798,25 @@ global.ConcertoData = {
       "reward": 22,
       "waves": [
         {
-          "count": 40,
-          "hp": 390,
+          "count": 120,
+          "hp": 130.0,
           "bossHp": 50000,
-          "bossLane": 2
+          "bossLane": 2,
+          "normalRewardBudget": 80
         },
         {
-          "count": 44,
-          "hp": 420,
+          "count": 132,
+          "hp": 140.0,
           "bossHp": 50500,
-          "bossLane": 0
+          "bossLane": 0,
+          "normalRewardBudget": 88
         },
         {
-          "count": 48,
-          "hp": 450,
+          "count": 144,
+          "hp": 150.0,
           "bossHp": 51000,
-          "bossLane": 4
+          "bossLane": 4,
+          "normalRewardBudget": 96
         }
       ]
     },
@@ -806,22 +833,25 @@ global.ConcertoData = {
       "reward": 22,
       "waves": [
         {
-          "count": 50,
-          "hp": 480,
+          "count": 150,
+          "hp": 160.0,
           "bossHp": 51500,
-          "bossLane": 2
+          "bossLane": 2,
+          "normalRewardBudget": 100
         },
         {
-          "count": 54,
-          "hp": 510,
+          "count": 162,
+          "hp": 170.0,
           "bossHp": 52000,
-          "bossLane": 0
+          "bossLane": 0,
+          "normalRewardBudget": 108
         },
         {
-          "count": 58,
-          "hp": 540,
+          "count": 174,
+          "hp": 180.0,
           "bossHp": 52500,
-          "bossLane": 4
+          "bossLane": 4,
+          "normalRewardBudget": 116
         }
       ]
     },
@@ -838,22 +868,25 @@ global.ConcertoData = {
       "reward": 28,
       "waves": [
         {
-          "count": 60,
-          "hp": 560,
+          "count": 180,
+          "hp": 186.667,
           "bossHp": 64000,
-          "bossLane": 2
+          "bossLane": 2,
+          "normalRewardBudget": 120
         },
         {
-          "count": 64,
-          "hp": 580,
+          "count": 192,
+          "hp": 193.333,
           "bossHp": 64500,
-          "bossLane": 0
+          "bossLane": 0,
+          "normalRewardBudget": 128
         },
         {
-          "count": 68,
-          "hp": 600,
+          "count": 204,
+          "hp": 200.0,
           "bossHp": 65000,
-          "bossLane": 4
+          "bossLane": 4,
+          "normalRewardBudget": 136
         }
       ]
     },
@@ -870,22 +903,25 @@ global.ConcertoData = {
       "reward": 28,
       "waves": [
         {
-          "count": 72,
-          "hp": 620,
+          "count": 216,
+          "hp": 206.667,
           "bossHp": 65500,
-          "bossLane": 2
+          "bossLane": 2,
+          "normalRewardBudget": 144
         },
         {
-          "count": 76,
-          "hp": 640,
+          "count": 228,
+          "hp": 213.333,
           "bossHp": 66000,
-          "bossLane": 0
+          "bossLane": 0,
+          "normalRewardBudget": 152
         },
         {
-          "count": 80,
-          "hp": 660,
+          "count": 240,
+          "hp": 220.0,
           "bossHp": 66500,
-          "bossLane": 4
+          "bossLane": 4,
+          "normalRewardBudget": 160
         }
       ]
     },
@@ -902,22 +938,25 @@ global.ConcertoData = {
       "reward": 28,
       "waves": [
         {
-          "count": 84,
-          "hp": 680,
+          "count": 252,
+          "hp": 226.667,
           "bossHp": 67000,
-          "bossLane": 2
+          "bossLane": 2,
+          "normalRewardBudget": 168
         },
         {
-          "count": 88,
-          "hp": 700,
+          "count": 264,
+          "hp": 233.333,
           "bossHp": 67500,
-          "bossLane": 0
+          "bossLane": 0,
+          "normalRewardBudget": 176
         },
         {
-          "count": 92,
-          "hp": 720,
+          "count": 276,
+          "hp": 240.0,
           "bossHp": 68000,
-          "bossLane": 4
+          "bossLane": 4,
+          "normalRewardBudget": 184
         }
       ]
     }
@@ -955,4 +994,4 @@ global.ConcertoData = {
     }
   ]
 };
-})(typeof window!=="undefined"?window:globalThis);
+})(typeof window!=='undefined'?window:globalThis);
