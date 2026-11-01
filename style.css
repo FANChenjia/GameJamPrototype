@@ -13,3 +13,11 @@
 #boss-health{font:11px Georgia,var(--sans);color:#a07b47;white-space:nowrap}.unit-status{padding:9px 11px;background:#ece2d9;border:1px solid #dbcec0;border-radius:5px;color:#89745f;font-size:11px;line-height:1.7;margin-top:9px}.field-heading{min-height:35px;height:auto;flex-wrap:wrap;padding-top:7px;padding-bottom:7px;row-gap:5px}
 
 :root{--paper:#fbf7ef;--ink:#594333;--muted:#9a8877;--green:#795b43;--line:#dfd1bf;--gold:#ac8052}.primary-button{background:#795b43;border-color:#674a34;box-shadow:0 3px 0 #553d2c}.primary-button:hover{background:#8e6b4e}.secondary-button{background:#f0e5d6;border-color:#cfbca3;color:#80654e}.secondary-button:hover{background:#e7d7c2}.island-land{background:radial-gradient(ellipse at 50% 20%,#f0e3cf,#c5aa88);border-color:#b29879;box-shadow:0 8px 0 #aa8b65,0 13px 0 #c8b69c30,0 25px 28px #97764c14}.island-node.active .island-land{outline-color:#aa875f;box-shadow:0 8px 0 #9b7851,0 13px 0 #c8b69c30,0 18px 30px #97764c25}.book{background:#f3ecdf;border-color:#d7c6ad;box-shadow:inset 6px 0 0 #e4d5bf,0 6px 24px #8c6a4312}.toast{background:#654c39ed;border-color:#b99a76}.battle-world{background:#eee3d3}.wallet strong{color:#8d6842}
+
+.hand-cards .play-card{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}.hand-cards .play-card.drag-origin{opacity:.32;transform:scale(.94)}
+.drag-ghost.card-drag{width:104px;height:auto;transform:translate(-50%,-63%);filter:drop-shadow(0 13px 14px #50341b4d);will-change:left,top,transform;opacity:1}
+.drag-ghost.card-drag .card-visual{width:100%;border-radius:9px;box-shadow:0 0 0 1px #b69465}.drag-ghost.card-drag.invalid{filter:drop-shadow(0 0 8px #a35738aa);opacity:.72}
+.drag-ghost.card-fly{z-index:160}.grid-cell.drop-target{background:#e7c98b4d!important;outline:2px solid #a37846;outline-offset:-3px;border-radius:8px;box-shadow:inset 0 0 15px #e7c98b66}
+.battle-world.card-drop-ready{box-shadow:inset 0 0 0 3px #b18a57,inset 0 0 45px #b18a5722}
+.card-drop-burst{position:fixed;z-index:155;width:62px;height:62px;border:2px solid #b78b4e;border-radius:50%;box-shadow:0 0 12px #f5dca788,inset 0 0 12px #f5dca755;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.drag-ghost.card-drag{will-change:auto}.hand-cards .play-card.drag-origin{transform:none}}

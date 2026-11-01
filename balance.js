@@ -6,7 +6,7 @@ global.ConcertoData = {
   "rows": 4,
   "handLimit": 8,
   "prebuyLimit": 3,
-  "drawInterval": 4,
+  "drawMode": "manual",
   "refreshCost": 6,
   "shopRefreshCost": 2,
   "summonLimit": 2,
