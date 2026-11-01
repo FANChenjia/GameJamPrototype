@@ -360,7 +360,7 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "在所在列前排敌人周围形成路径长度 1/3 的区域，伤害区域内敌人并减速 15%。每列只能由一件常驻拉弦乐器覆盖。",
+      "description": "在所在列的随机位置形成路径长度 1/3 的区域，伤害区域内敌人并减速 15%。每列只能由一件常驻拉弦乐器覆盖。",
       "portrait": "violin"
     },
     {
@@ -388,7 +388,7 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "横向覆盖两列，各自在前排周围形成路径长度 1/3 的区域，伤害并减速 25%。覆盖列不能与其他常驻拉弦重叠。",
+      "description": "横向覆盖两列，各自在随机位置形成路径长度 1/3 的区域，伤害并减速 25%。覆盖列不能与其他常驻拉弦重叠。",
       "portrait": "viola"
     },
     {
@@ -420,7 +420,7 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "横向覆盖三列，各自在前排周围形成路径长度 1/3 的区域，伤害并减速 40%。覆盖列不能与其他常驻拉弦重叠。",
+      "description": "横向覆盖三列，各自在随机位置形成路径长度 1/3 的区域，伤害并减速 40%。覆盖列不能与其他常驻拉弦重叠。",
       "portrait": "cello"
     }
   ],
@@ -624,7 +624,7 @@ global.ConcertoData = {
       "rhythm": 8,
       "weight": 2,
       "shopWeight": 3,
-      "description": "全体临时覆盖 5 列，5 秒；非穿透仍每列只命中最前排",
+      "description": "全体临时覆盖 5 列，5 秒；普通单体仍每列只命中最前排",
       "target": "global",
       "summon": null,
       "art": "assets/cards/Infinite.png"

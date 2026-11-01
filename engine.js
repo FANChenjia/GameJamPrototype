@@ -11,7 +11,7 @@ function initialProgress(){return {version:2,rhythm:0,unlocked:0,cleared:[],shop
 function settle(progress,level,result){const next=copy(progress);let reward=0;if(result.win&&!next.cleared.includes(level.id)){reward=level.reward+Math.floor((result.points+1e-7)/20);next.rhythm+=reward;next.cleared.push(level.id);next.unlocked=Math.min(9,Math.max(next.unlocked,level.index+1));}if(result.win)delete next.shops[level.id];return {progress:next,reward};}
 class Game {
  constructor(level='1-1',options={}){this.level=copy(typeof level==='string'?D.levels.find(l=>l.id===level):level);if(!this.level)throw new Error('未知关卡');this.seed=options.seed??(771+this.level.index*101);this.tutorialEnabled=!!options.tutorial&&this.level.id==='1-1';this.prepaid=(options.prepaid||[]).filter(id=>CARDS[id]).slice(0,3);this.reset();}
- reset(){this.random=seeded(this.seed);this.seq=0;this.phase='ready';this.elapsed=0;this.tick=0;this.buffer=0;this.wave=0;this.waveStart=0;this.skippedTime=0;this.points=this.level.initial;this.base=10;this.kills=0;this.units=[];this.monsters=[];this.areas=[];this.bullets=[];this.effects=[];this.pulses=[];this.offers=[];this.guarantee=null;this.freeRefresh=0;this.hand=[];this.pendingCards=[];this.result=null;this.arranging=false;this.dimUntil=0;this.config={duration:120,pointsPerSecond:this.level.income};this.stats={spent:0,refreshes:0,refreshSpent:0,cardSpent:0,cardPurchases:[],leaks:0,normalLeaks:0,rushLeaks:0,cardUses:[],bossTimes:[],minPoints:this.points,waveSettlements:[]};this.giveCards(this.prepaid);this.prepareWave();this.offers=Array.from({length:3},(_,i)=>this.card(this.tutorialEnabled?['Presto','Forte','Diminuendo'][i]:weighted('weight',this.random)));this.guide?.reset();}
+ reset(){this.random=seeded(this.seed);this.areaRandom=seeded(this.seed+104729);this.seq=0;this.phase='ready';this.elapsed=0;this.tick=0;this.buffer=0;this.wave=0;this.waveStart=0;this.skippedTime=0;this.points=this.level.initial;this.base=10;this.kills=0;this.units=[];this.monsters=[];this.areas=[];this.bullets=[];this.effects=[];this.pulses=[];this.offers=[];this.guarantee=null;this.freeRefresh=0;this.hand=[];this.pendingCards=[];this.result=null;this.arranging=false;this.dimUntil=0;this.config={duration:120,pointsPerSecond:this.level.income};this.stats={spent:0,refreshes:0,refreshSpent:0,cardSpent:0,cardPurchases:[],leaks:0,normalLeaks:0,rushLeaks:0,cardUses:[],bossTimes:[],minPoints:this.points,waveSettlements:[]};this.giveCards(this.prepaid);this.prepareWave();this.offers=Array.from({length:3},(_,i)=>this.card(this.tutorialEnabled?['Presto','Forte','Diminuendo'][i]:weighted('weight',this.random)));this.guide?.reset();}
  guideBlocks(action,data={}){return !!(this.guide?.active&&!this.guide.allows(action,data));}
  get waveElapsed(){return this.elapsed-this.waveStart;}
  get waveRemaining(){return Math.max(0,Math.round((this.level.waveDuration-this.waveElapsed)*100)/100);}
@@ -76,7 +76,8 @@ class Game {
  return ok('奏法已生效');}
  spawn(lane,boss=false,rush=false){const p=this.currentWave,maxHp=boss?p.bossHp:rush?p.rushHp:p.hp;const shield=!boss&&!rush&&this.level.island>=3&&this.spawnIndex<Math.floor(p.count*.2)?maxHp*.2:0;const m={id:++this.seq,lane,lanes:boss?this.bossLanes(lane):[lane],rush,travelTime:boss?20:rush?p.rushTravelTime:p.travelTime,y:0,hp:maxHp,maxHp,shield,maxShield:shield,boss,variant:boss?1:(this.spawnIndex%3),wobble:this.random()*6.28,hit:0,slowed:false,slow:0,marks:[],born:this.elapsed,stunUntil:0,freezeUntil:0,vulnerableUntil:0};this.monsters.push(m);return m;}
  front(lane){let front=null;for(const m of this.monsters)if(m.hp>0&&this.monsterLanes(m).includes(lane)&&(!front||m.y>front.y+1e-9))front=m;return front;}
- addArea(unit,lane,center,kind='bow'){const start=clamp(center-1/6,0,2/3),key=kind==='rhapsody'?`r:${lane}`:`b:${unit.id}:${lane}`;let a=this.areas.find(a=>a.key===key);if(a){a.start=start;a.end=start+1/3;a.until=this.elapsed+(kind==='bow'?.5:2);a.pulse=.22;return a;}a={id:++this.seq,key,kind,lane,start,end:start+1/3,unitId:unit.id,bornAt:this.elapsed,until:this.elapsed+(kind==='bow'?.5:2),duration:kind==='bow'?.5:2,nextTick:this.elapsed+.5,slow:kind==='rhapsody'?.15:({violin:.15,viola:.25,cello:.4}[unit.profile.id]||.15),pulse:.22,ticks:0,clone:false};this.areas.push(a);return a;}
+ rollArea(lane){const start=this.areaRandom()*(2/3);return {lane,start,end:start+1/3};}
+ addArea(unit,lane,kind='bow'){const bounds=this.rollArea(lane),key=kind==='rhapsody'?`r:${lane}`:`b:${unit.id}:${lane}`;let a=this.areas.find(a=>a.key===key);if(a){Object.assign(a,bounds);a.until=this.elapsed+(kind==='bow'?.5:2);a.pulse=.22;return a;}a={id:++this.seq,key,kind,...bounds,unitId:unit.id,bornAt:this.elapsed,until:this.elapsed+(kind==='bow'?.5:2),duration:kind==='bow'?.5:2,nextTick:this.elapsed+.5,slow:kind==='rhapsody'?.15:({violin:.15,viola:.25,cello:.4}[unit.profile.id]||.15),pulse:.22,ticks:0,clone:false};this.areas.push(a);return a;}
  areaContains(a,m){return this.monsterLanes(m).includes(a.lane)&&m.y>=a.start-1e-9&&m.y<=a.end+1e-9;}
  countAccent(u){if(!u||u.clone||u.profile.family!=='percussion')return;u.accentProgress++;while(u.accentProgress>=100){u.accentProgress-=100;this.stun();}}
  stun(){for(const m of this.monsters)if(m.hp>0)m.stunUntil=Math.max(m.stunUntil,this.elapsed+1);}
@@ -86,7 +87,13 @@ class Game {
  mark(u,m){if(m.hp>0&&!m.marks.some(t=>t.source===u.id))m.marks.push({source:u.id,until:this.elapsed+10,damage:0});}
  skill(u,forced=false){const id=u.profile.id,covered=this.naturalLanes(u);if(id==='lyra')for(const m of this.monsters)if(m.hp>0&&this.intersects(m,covered))m.vulnerableUntil=this.elapsed+10;if(id==='harp'&&forced)u.permSpeed=Math.min(1,u.permSpeed+.01);if(id==='guqin'&&forced)for(const m of this.monsters)if(this.intersects(m,covered))this.mark(u,m);if(id==='suona'){const m=this.front(covered[0]);if(m){if(m.boss)this.damageMonster(m,m.maxHp*.03,{source:u,bypass:true});else {m.shield=0;this.damageMonster(m,m.hp,{source:u,bypass:true});}}}if(id==='snare'){const pool=this.units.filter(x=>!x.clone&&x.profile.family!=='percussion');if(pool.length){const x=pool[Math.floor(this.random()*pool.length)];x.permSpeed=Math.min(1,x.permSpeed+.1);}}if(u.profile.family==='percussion')this.stun();}
  attack(u){const lanes=this.lanes(u),all=this.monsters.filter(m=>m.hp>0&&this.intersects(m,lanes));if(!all.length)return false;u.attacks++;u.flash=.25;let targets=[];if(u.profile.family==='percussion'||u.profile.piercing)targets=all;else if(!u.profile.areaAttack)targets=lanes.map(l=>this.front(l)).filter(Boolean);
- if(u.profile.areaAttack){for(const lane of lanes){const front=this.front(lane);if(!front)continue;const competitors=this.units.filter(x=>!x.clone&&x.profile.areaAttack&&this.lanes(x).includes(lane));const lead=competitors.sort((a,b)=>this.directDamage(b)*this.attackSpeed(b)-this.directDamage(a)*this.attackSpeed(a)||a.id-b.id)[0];if(!u.clone&&lead&&lead.id!==u.id)continue;const start=clamp(front.y-1/6,0,2/3);if(!u.clone)this.addArea(u,lane,front.y);targets.push(...all.filter(m=>this.monsterLanes(m).includes(lane)&&m.y>=start-1e-9&&m.y<=start+1/3+1e-9));}}
+ if(u.profile.areaAttack){for(const lane of lanes){
+  if(!all.some(m=>this.monsterLanes(m).includes(lane)))continue;
+  const competitors=this.units.filter(x=>!x.clone&&x.profile.areaAttack&&this.lanes(x).includes(lane)),lead=competitors.sort((a,b)=>this.directDamage(b)*this.attackSpeed(b)-this.directDamage(a)*this.attackSpeed(a)||a.id-b.id)[0];
+  if(!u.clone&&lead&&lead.id!==u.id)continue;
+  const area=u.clone?this.rollArea(lane):this.addArea(u,lane);
+  targets.push(...all.filter(m=>this.areaContains(area,m)));
+ }}
  // One entity can be selected through several lanes. Resolve it once per attack.
  targets=[...new Map(targets.map(m=>[m.id,m])).values()];
  const power=this.directDamage(u)*(u.sforzando?10:1),bypass=this.active(u,'Syncopation'),segments=u.profile.id==='marimba'?[1,2,3,4,5,6,7]:[null];
@@ -102,7 +109,7 @@ class Game {
   }
   if(u.profile.id==='guqin'&&!u.clone)this.mark(u,m);
  }
- if(!u.clone&&this.active(u,'Rhapsody'))for(const lane of lanes){const front=this.front(lane)||targets.find(m=>this.monsterLanes(m).includes(lane));if(front)this.addArea(u,lane,front.y,'rhapsody');}
+ if(!u.clone&&this.active(u,'Rhapsody'))for(const lane of lanes)if(targets.some(m=>this.monsterLanes(m).includes(lane)))this.addArea(u,lane,'rhapsody');
  if(!u.clone){
   // Marimba's passive counts its actual damage events inside damageMonster.
   if(u.profile.family==='percussion'&&u.profile.id!=='marimba')this.countAccent(u);

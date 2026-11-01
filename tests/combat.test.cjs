@@ -37,7 +37,7 @@ test('常驻上限与真实 20 格限制同时生效，召唤另占名额',()=>{
 test('普通吹奏每列只打前排，不能越过小怪攻击 Boss',()=>{const g=sandbox();const u=g.place('flute',1,0),back=enemy(g,1,.1,1000,true),front=enemy(g,1,.7);g.attack(u);assert.ok(front.hp<100);assert.equal(back.hp,1000);});
 test('双列上低音号每列都打一个前排，单次完整伤害不均分',()=>{const g=sandbox(),u=g.place('euphonium',1,0),a=enemy(g,1,.8,1000),b=enemy(g,2,.6,1000),rear=enemy(g,1,.1,1000);g.attack(u);assert.equal(a.hp,875);assert.equal(b.hp,875);assert.equal(rear.hp,1000);});
 test('贯穿：竖琴同时命中两列的全部敌人，一次普攻只加一次攻速',()=>{const g=sandbox(),u=g.place('harp',1,0);const a=enemy(g,1,.2),b=enemy(g,1,.7),c=enemy(g,2,.3),out=enemy(g,0,.5);g.attack(u);for(const m of [a,b,c])assert.equal(m.hp,88);assert.equal(out.hp,100);assert.equal(u.permSpeed,.01);assert.equal(u.attacks,1);});
-test('拉弦区域固定为 1/3，前排选点且只伤区域内目标',()=>{const g=sandbox(),u=g.place('viola',1,0);const a=enemy(g,1,.8),inside=enemy(g,1,.7),outside=enemy(g,1,.1),b=enemy(g,2,.9);g.attack(u);assert.equal(g.areas.length,2);for(const z of g.areas)assert.ok(Math.abs(z.end-z.start-1/3)<1e-9);assert.equal(a.hp,92.5);assert.equal(inside.hp,92.5);assert.equal(outside.hp,100);assert.equal(b.hp,92.5);assert.equal(g.areas[0].slow,.25);});
+test('拉弦每列独立随机选区，只伤随机区内敌人而不追踪前排',()=>{const g=sandbox(),u=g.place('viola',1,0);const rolls=[0,.9];g.areaRandom=()=>rolls.shift();const front=enemy(g,1,.8),inside=enemy(g,1,.1),outside=enemy(g,1,.5),b=enemy(g,2,.9);g.attack(u);assert.equal(g.areas.length,2);for(const z of g.areas)assert.ok(Math.abs(z.end-z.start-1/3)<1e-9);assert.equal(g.areas[0].start,0);assert.ok(Math.abs(g.areas[1].start-.6)<1e-9);assert.equal(front.hp,100);assert.equal(inside.hp,92.5);assert.equal(outside.hp,100);assert.equal(b.hp,92.5);assert.equal(g.areas[0].slow,.25);});
 test('协奏包含自身与唢呐，配对增伤按加法区',()=>{const g=sandbox();const f=g.place('flute',0,0);g.place('oboe',1,0);assert.equal(g.windFactor(f),1.75);g.useCard(give(g,'Suona'),{col:2,row:0});assert.equal(g.windFactor(f),2);});
 test('上低音号只减半一次，小号享配对伤害',()=>{const g=sandbox(),u=g.place('trumpet',0,0);g.place('euphonium',1,0);g.place('euphonium',3,0);assert.equal(g.attackSpeed(u),.5);assert.equal(g.windFactor(u),3.25);});
 test('临时攻速异名相加、同名刷新不叠加，常驻共享 +100% 上限',()=>{const g=sandbox(),u=g.place('flute',0,0);u.permSpeed=1;g.useCard(give(g,'Presto'),u.id);g.useCard(give(g,'Presto'),u.id);g.useCard(give(g,'Prestissimo'),u.id);g.useCard(give(g,'Cadenza'));assert.equal(g.attackSpeed(u),8.25);g.elapsed=5;assert.equal(g.attackSpeed(u),4.5);g.elapsed=10;assert.equal(g.attackSpeed(u),3);});
@@ -115,10 +115,10 @@ test('已预购急板也必须实际领取一次教学候选，不自动跳过�
 function firstWaveUpper(l){let best=0;const M=l.cap,L=l.waveDuration;for(let N=0;N<=M;N++){const wind=22.5*(1.25+.25*N),euph=33*(1+.25*N);for(let P=0;P<=M-N;P++)for(let lyra=0;lyra<=1;lyra++){const O=M-N-P-lyra;if(O<0)continue;for(let E=0;E<=Math.min(3,N);E++)for(let F=0;F<=Math.min(N-E,12-4*E-lyra);F++){const K=Math.min(O,12-4*E-lyra-F);if(K<0)continue;const base=F*wind+E*euph+P*15+lyra*15+K*30,buff=.1*Math.floor(L/10)*P*Math.max(wind,euph,30);best=Math.max(best,(base+buff)*(lyra?1.25:1)*20);}}}return best;}
 test('Boss 占连续三列、共享同一生命实体，波次覆盖依次中间/左侧/右侧',()=>{for(const l of DATA.levels){const g=new Game(l.id);for(let wave=0;wave<l.waves.length;wave++){g.wave=wave;const m=g.spawn(l.waves[wave].bossLane,true),expected=[[1,2,3],[0,1,2],[2,3,4]][wave];assert.deepEqual(plain(g.monsterLanes(m)),expected);for(const lane of expected)assert.equal(g.front(lane),m);g.monsters=[];}}});
 test('Boss 两侧声部也会持续推进普攻，范围外两列不命中',()=>{const g=sandbox(),m=g.spawn(2,true);m.hp=m.maxHp=1000;for(let col=0;col<5;col++)g.place('lyra',col,0);g.schedule=[];g.bossSpawned=true;g.start();g.advance(.67);assert.equal(m.hp,970);assert.ok(g.units.filter(u=>[1,2,3].includes(u.col)).every(u=>u.attacks===1));assert.ok(g.units.filter(u=>[0,4].includes(u.col)).every(u=>u.attacks===0));});
-test('多列贯穿与全场攻击对同一个 Boss 每次普攻只命中一次',()=>{for(const id of ['harp','marimba','viola']){const g=sandbox(),u=g.place(id,id==='harp'?1:0,0),m=g.spawn(2,true);m.y=.5;m.hp=m.maxHp=1000;if(id==='viola'){g.remove(u.id);const v=g.place('viola',1,0);g.attack(v);}else g.attack(u);assert.equal(m.hp,1000-{harp:12,marimba:28,viola:7.5}[id],id);}});
+test('多列贯穿与全场攻击对同一个 Boss 每次普攻只命中一次',()=>{for(const id of ['harp','marimba','viola']){const g=sandbox(),u=g.place(id,id==='harp'?1:0,0),m=g.spawn(2,true);m.y=.5;m.hp=m.maxHp=1000;g.areaRandom=()=>.5;if(id==='viola'){g.remove(u.id);const v=g.place('viola',1,0);g.attack(v);}else g.attack(u);assert.equal(m.hp,1000-{harp:12,marimba:28,viola:7.5}[id],id);}});
 test('无穷动与回旋曲遇到三列 Boss 不重复结算直伤或百分比附伤',()=>{const g=sandbox(),u=g.place('flute',0,0),m=g.spawn(2,true);m.hp=m.maxHp=1000;g.useCard(give(g,'Infinite'));g.useCard(give(g,'Rondo'));g.attack(u);assert.equal(m.hp,979.25);});
 test('Boss 某列受前排遮挡时，另外两列仍能独立命中',()=>{const g=sandbox(),u=g.place('flute',0,0),m=g.spawn(2,true);m.hp=m.maxHp=1000;m.y=.1;const a=enemy(g,1,.8,1000),b=enemy(g,2,.8,1000);g.useCard(give(g,'Infinite'));g.attack(u);assert.equal(m.hp,981.25);assert.equal(a.hp,981.25);assert.equal(b.hp,981.25);});
-test('狂想曲三列区域重叠到 Boss 时，每半秒最多结算一次伤害',()=>{const g=sandbox();g.schedule=[];g.bossSpawned=true;const m=g.spawn(2,true);m.y=.5;m.hp=m.maxHp=1000;for(const lane of [1,2,3])g.addArea({id:99},lane,.5,'rhapsody');g.start();g.advance(.51);assert.equal(m.hp,992.5);g.advance(.5);assert.equal(m.hp,985);});
+test('狂想曲三列区域重叠到 Boss 时，每半秒最多结算一次伤害',()=>{const g=sandbox();g.schedule=[];g.areaRandom=()=>.5;g.bossSpawned=true;const m=g.spawn(2,true);m.y=.5;m.hp=m.maxHp=1000;for(const lane of [1,2,3])g.addArea({id:99},lane,'rhapsody');g.start();g.advance(.51);assert.equal(m.hp,992.5);g.advance(.5);assert.equal(m.hp,985);});
 test('突进数量固定，位置由独立波次种子选择，刷新卡牌不会改变出怪表',()=>{for(const l of DATA.levels){const g=new Game(l.id);for(let wave=0;wave<l.waves.length;wave++){g.wave=wave;g.prepareWave();const w=l.waves[wave],rush=g.schedule.filter(s=>s.rush);assert.equal(rush.length,w.rushCount);assert.ok(rush.every(s=>l.island===1?s.at>=50&&s.at<=80:s.at>=l.waveDuration*.25&&s.at<=l.waveDuration*.25+10));const before=plain(g.schedule);for(let i=0;i<4;i++)g.rollOffers();g.prepareWave();assert.deepEqual(plain(g.schedule),before);}}});
 test('突进生命与移动速度使用独立数值，漏过只扣一次耐久且没有奖励',()=>{const g=new Game('2-1'),m=g.spawn(0,false,true);assert.equal(m.hp,g.currentWave.rushHp);assert.equal(m.travelTime,10);assert.equal(m.shield,0);g.schedule=[];g.start();const p=g.points;g.advance(10);assert.equal(g.stats.rushLeaks,1);assert.equal(g.stats.normalLeaks,1);assert.equal(g.base,9);assert.equal(g.kills,0);assert.equal(g.points,p+15);});
 test('前两岛少用牌确有漏怪风险，合适的强音时机能降低突破数量',()=>{for(const level of ['2-1','2-2']){let passive=0,active=0;for(let seed=1;seed<=6;seed++){const a=playBaseline(level,false,seed),b=playBaseline(level,true,seed);assert.ok(a.stats.normalLeaks>0,level);assert.equal(b.phase,'won',level);assert.ok(b.stats.normalLeaks<=a.stats.normalLeaks,level);passive+=a.stats.normalLeaks;active+=b.stats.normalLeaks;}assert.ok(active<passive,level);}});
@@ -141,14 +141,14 @@ test('已购买指定牌放错目标不消耗，合法目标可在零余额使�
 test('所有宽体乐器命中 Boss 的多条声部时只结算一次伤害事件',()=>{
  for(const [id,col,damage] of [['harp',1,12],['guqin',1,15],['euphonium',1,125],['viola',1,7.5],['cello',1,7.5],['marimba',0,28]]){
   const g=sandbox();let u;if(id==='guqin'){g.useCard(give(g,'Guqin'),{col,row:0});u=g.units[0];}else u=g.place(id,col,0);
-  const boss=g.spawn(2,true);boss.y=.5;boss.hp=boss.maxHp=1000;let events=0;const apply=g.damageMonster.bind(g);g.damageMonster=(m,...args)=>{if(m.id===boss.id)events++;return apply(m,...args);};
+  g.areaRandom=()=>.5;const boss=g.spawn(2,true);boss.y=.5;boss.hp=boss.maxHp=1000;let events=0;const apply=g.damageMonster.bind(g);g.damageMonster=(m,...args)=>{if(m.id===boss.id)events++;return apply(m,...args);};
   g.attack(u);assert.equal(events,1,id);assert.equal(boss.hp,1000-damage,id);assert.equal(u.attacks,1);assert.equal(g.bullets.length,1,id);
  }
 });
 test('无穷动、强音、突强及回旋曲对 Boss 合并为一次结算且不按列放大',()=>{
  for(const id of ['flute','harp','marimba','cello']){
   const g=sandbox(),u=g.place(id,0,0),boss=g.spawn(2,true);boss.y=.5;boss.hp=boss.maxHp=10000;
-  for(const type of ['Infinite','Forte','Rondo'])g.useCard(give(g,type));g.useCard(give(g,'Sforzando'),u.id);
+  g.areaRandom=()=>.5;for(const type of ['Infinite','Forte','Rondo'])g.useCard(give(g,type));g.useCard(give(g,'Sforzando'),u.id);
   const expected=g.directDamage(u)*10+boss.maxHp*.002;let events=0;const apply=g.damageMonster.bind(g);g.damageMonster=(m,...args)=>{if(m.id===boss.id)events++;return apply(m,...args);};
   g.attack(u);assert.equal(events,1,id);assert.equal(boss.hp,10000-expected,id);assert.equal(u.attacks,1);assert.equal(u.sforzando,false);
  }
@@ -227,4 +227,35 @@ test('超时清场正常接波，补发为零，新一波重新获得完整宽�
 test('末波可在标准时间以后清场胜利，超时中单位仍攻击且增益正常到期',()=>{
  const g=overtimeSetup('1-1',121),u=g.place('lyra',0,0),m=enemy(g,0,.5,10);g.useCard(give(g,'Presto'),u.id);u.buffs.Presto=g.elapsed+.1;g.advance(1);
  assert.equal(g.phase,'won');assert.ok(g.elapsed>120);assert.equal(g.remainingTime,0);assert.ok(g.stats.waveSettlements[0].overtimeSeconds>1);assert.equal(g.stats.waveSettlements[0].bonus,0);assert.equal(g.active(u,'Presto'),false);
+});
+
+
+test('三种提琴随机区均完整位于对应列内，长度1/3，减速值和持续时间正确',()=>{
+ for(const [id,slow] of [['violin',.15],['viola',.25],['cello',.4]]){
+  const g=sandbox(),u=g.place(id,0,0);for(let lane=0;lane<u.profile.width;lane++)enemy(g,lane,.9,1000);
+  const rolls=[0,.5,1-Number.EPSILON];g.areaRandom=()=>rolls.shift();g.attack(u);assert.equal(g.areas.length,u.profile.width);
+  for(const a of g.areas){assert.ok(a.start>=0&&a.end<=1);assert.ok(Math.abs(a.end-a.start-1/3)<1e-9);assert.equal(a.slow,slow);assert.equal(a.until,.5);assert.equal(a.duration,.5);}
+  if(id==='cello'){assert.equal(g.areas[0].start,0);assert.ok(Math.abs(g.areas[1].start-1/3)<1e-9);assert.ok(g.areas[2].start> .66);}
+ }
+});
+test('随机区允许落空，区域外不受伤不减速，走入区域才减速',()=>{
+ const g=sandbox(),u=g.place('violin',0,0),front=enemy(g,0,.9,1000);g.areaRandom=()=>0;g.attack(u);assert.equal(front.hp,1000);assert.equal(u.attacks,1);assert.equal(g.areas.length,1);
+ const inside=enemy(g,0,.1,1000);u.profile.attackSpeed=0;g.schedule=[];g.start();g.update(.01);assert.equal(front.slow,0);assert.equal(inside.slow,.15);assert.equal(inside.hp,1000);
+ g.advance(.5);assert.equal(g.areas.length,0);assert.equal(inside.slow,0);
+});
+test('区域位置按独立种子重试可复现，刷新卡牌或改变前排位置不会改变区域序列',()=>{
+ function setup(){const g=new Game('4-1',{seed:2026});const u=g.place('viola',1,0);for(const lane of [1,2])enemy(g,lane,.9,100000);return {g,u};}
+ function sample(g,u){const out=[];for(let i=0;i<12;i++){g.attack(u);out.push(plain(g.areas.map(a=>({lane:a.lane,start:a.start,end:a.end}))));}return out;}
+ const a=setup(),b=setup();for(let i=0;i<6;i++)a.g.rollOffers();a.g.monsters.forEach(m=>m.y=.1);const first=sample(a.g,a.u),second=sample(b.g,b.u);assert.deepEqual(first,second);assert.ok(new Set(first.map(x=>x[0].start)).size>1);
+ a.g.reset();const u=a.g.place('viola',1,0);for(const lane of [1,2])enemy(a.g,lane,.9,100000);assert.deepEqual(sample(a.g,u),first);
+});
+test('空列不生成提琴区，不消耗随机抽样；多列区域各自随机',()=>{
+ const g=sandbox(),u=g.place('cello',0,0);enemy(g,1,.8,1000);let rolls=0;g.areaRandom=()=>{rolls++;return .25;};g.attack(u);assert.equal(rolls,1);assert.equal(g.areas.length,1);assert.equal(g.areas[0].lane,1);
+});
+test('狂想曲随机换位置时保留单列唯一、两秒持续和原伤害节拍',()=>{
+ const g=sandbox(),u=g.place('flute',0,0);enemy(g,0,.9,100000);const rolls=[0,.9];g.areaRandom=()=>rolls.shift();g.useCard(give(g,'Rhapsody'));g.attack(u);const a=g.areas[0];assert.equal(a.kind,'rhapsody');assert.equal(a.start,0);assert.equal(a.until,2);assert.equal(a.slow,.15);const tick=a.nextTick;
+ g.elapsed=.25;g.attack(u);assert.equal(g.areas.length,1);assert.equal(g.areas[0],a);assert.ok(Math.abs(a.start-.6)<1e-9);assert.equal(a.until,2.25);assert.equal(a.nextTick,tick);
+});
+test('提琴分身的随机区域伤害仍减半，且不制造额外减速区',()=>{
+ const g=sandbox(),u=g.place('violin',0,0),m=enemy(g,0,.1,1000);g.areaRandom=()=>0;g.useCard(give(g,'Duet'),u.id);const clone=g.units.find(x=>x.clone);g.attack(clone);assert.equal(m.hp,996.25);assert.equal(g.areas.length,0);
 });
