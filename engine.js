@@ -85,9 +85,21 @@ class Game {
  skill(u,forced=false){const id=u.profile.id,covered=this.naturalLanes(u);if(id==='lyra')for(const m of this.monsters)if(m.hp>0&&this.intersects(m,covered))m.vulnerableUntil=this.elapsed+10;if(id==='harp'&&forced)u.permSpeed=Math.min(1,u.permSpeed+.01);if(id==='guqin'&&forced)for(const m of this.monsters)if(this.intersects(m,covered))this.mark(u,m);if(id==='suona'){const m=this.front(covered[0]);if(m){if(m.boss)this.damageMonster(m,m.maxHp*.03,{source:u,bypass:true});else {m.shield=0;this.damageMonster(m,m.hp,{source:u,bypass:true});}}}if(id==='snare'){const pool=this.units.filter(x=>!x.clone&&x.profile.family!=='percussion');if(pool.length){const x=pool[Math.floor(this.random()*pool.length)];x.permSpeed=Math.min(1,x.permSpeed+.1);}}if(u.profile.family==='percussion')this.stun();}
  attack(u){const lanes=this.lanes(u),all=this.monsters.filter(m=>m.hp>0&&this.intersects(m,lanes));if(!all.length)return false;u.attacks++;u.flash=.25;let targets=[];if(u.profile.family==='percussion'||u.profile.piercing)targets=all;else if(!u.profile.areaAttack)targets=lanes.map(l=>this.front(l)).filter(Boolean);
  if(u.profile.areaAttack){for(const lane of lanes){const front=this.front(lane);if(!front)continue;const competitors=this.units.filter(x=>!x.clone&&x.profile.areaAttack&&this.lanes(x).includes(lane));const lead=competitors.sort((a,b)=>this.directDamage(b)*this.attackSpeed(b)-this.directDamage(a)*this.attackSpeed(a)||a.id-b.id)[0];if(!u.clone&&lead&&lead.id!==u.id)continue;const start=clamp(front.y-1/6,0,2/3);if(!u.clone)this.addArea(u,lane,front.y);targets.push(...all.filter(m=>this.monsterLanes(m).includes(lane)&&m.y>=start-1e-9&&m.y<=start+1/3+1e-9));}}
- targets=[...new Set(targets)];
+ // One entity can be selected through several lanes. Resolve it once per attack.
+ targets=[...new Map(targets.map(m=>[m.id,m])).values()];
  const power=this.directDamage(u)*(u.sforzando?10:1),bypass=this.active(u,'Syncopation'),segments=u.profile.id==='marimba'?[1,2,3,4,5,6,7]:[null];
- for(const m of targets){for(const segment of segments){const amount=segment===null?power:power*segment/28;this.damageMonster(m,amount,{source:u,bypass});}if(this.active(u,'Rondo'))this.damageMonster(m,m.maxHp*(m.boss?.002:.02)*(u.clone?.5:1),{source:u,bypass});if(u.profile.id==='guqin'&&!u.clone)this.mark(u,m);}
+ for(const m of targets){
+  const rondo=this.active(u,'Rondo')?m.maxHp*(m.boss?.002:.02)*(u.clone?.5:1):0;
+  if(m.boss){
+   // Boss: one health/shield application, hit event and reward check per attack.
+   // Marimba's seven notes total one AD; Rondo adds its bonus only once.
+   this.damageMonster(m,power+rondo,{source:u,bypass});
+  }else {
+   for(const segment of segments){const amount=segment===null?power:power*segment/28;this.damageMonster(m,amount,{source:u,bypass});}
+   if(rondo)this.damageMonster(m,rondo,{source:u,bypass});
+  }
+  if(u.profile.id==='guqin'&&!u.clone)this.mark(u,m);
+ }
  if(!u.clone&&this.active(u,'Rhapsody'))for(const lane of lanes){const front=this.front(lane)||targets.find(m=>this.monsterLanes(m).includes(lane));if(front)this.addArea(u,lane,front.y,'rhapsody');}
  if(!u.clone){if(u.profile.id==='harp')u.permSpeed=Math.min(1,u.permSpeed+.01);if(u.profile.id==='lyra'&&u.attacks%10===0)this.skill(u);if(['snare','suona'].includes(u.profile.id)&&u.attacks%5===0)this.skill(u);if(u.profile.id==='gong')this.skill(u);}
  u.sforzando=false;const center=this.center(u),origin={x:center.x,y:(.65+center.row*.08-.04)/.56};this.pulses.push({unitId:u.id,...origin,lanes,t:0,life:.4,clone:u.clone});for(const m of targets.slice(0,8))this.bullets.push({id:++this.seq,unitId:u.id,from:{...origin},to:{x:(this.monsterLanes(m).find(l=>lanes.includes(l))??m.lane)+.5,y:m.y},t:0,life:.22,note:'♪',clone:u.clone});return true;}

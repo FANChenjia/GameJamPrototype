@@ -42,7 +42,7 @@ test('协奏包含自身与唢呐，配对增伤按加法区',()=>{const g=sandb
 test('上低音号只减半一次，小号享配对伤害',()=>{const g=sandbox(),u=g.place('trumpet',0,0);g.place('euphonium',1,0);g.place('euphonium',3,0);assert.equal(g.attackSpeed(u),.5);assert.equal(g.windFactor(u),3.25);});
 test('临时攻速异名相加、同名刷新不叠加，常驻共享 +100% 上限',()=>{const g=sandbox(),u=g.place('flute',0,0);u.permSpeed=1;g.useCard(give(g,'Presto'),u.id);g.useCard(give(g,'Presto'),u.id);g.useCard(give(g,'Prestissimo'),u.id);g.useCard(give(g,'Cadenza'));assert.equal(g.attackSpeed(u),8.25);g.elapsed=5;assert.equal(g.attackSpeed(u),4.5);g.elapsed=10;assert.equal(g.attackSpeed(u),3);});
 test('护盾优先吸收，切分直接伤生命且不消耗护盾',()=>{const g=sandbox(),u=g.place('lyra',0,0),m=enemy(g,0);m.shield=20;g.attack(u);assert.equal(m.hp,100);assert.equal(m.shield,10);g.useCard(give(g,'Syncopation'));g.attack(u);assert.equal(m.hp,90);assert.equal(m.shield,10);});
-test('马林巴七段合计 28，Boss 回旋曲每次普攻只触发一次 0.2%',()=>{const g=sandbox(),u=g.place('marimba',0,0),m=enemy(g,0,.3,1000,true);g.useCard(give(g,'Rondo'));g.attack(u);assert.equal(m.hp,970);assert.equal(u.hits,8);});
+test('马林巴对 Boss 合并为一次 28 直伤加一次回旋曲附伤',()=>{const g=sandbox(),u=g.place('marimba',0,0),m=enemy(g,0,.3,1000,true);g.useCard(give(g,'Rondo'));g.attack(u);assert.equal(m.hp,970);assert.equal(u.hits,1);});
 test('唢呐不能秒 Boss，净化替代为最大生命 3%',()=>{const g=sandbox();g.useCard(give(g,'Suona'),{col:0,row:0});const u=g.units[0],boss=enemy(g,0,.8,1000,true);g.skill(u,true);assert.equal(boss.hp,970);const normal=enemy(g,0,.9,100);g.skill(u,true);assert.equal(normal.hp,0);assert.equal(g.kills,1);});
 test('重音与军鼓主动技能晕眩，不改变硬性截止',()=>{const g=sandbox(),u=g.place('snare',0,0),m=enemy(g,0,.5,10000);u.hits=99;g.attack(u);assert.equal(u.hits,0);assert.equal(m.stunUntil,1);const f=g.place('flute',1,0);g.skill(u,true);assert.equal(f.permSpeed,.1);});
 test('安魂曲逐个按已损生命结算',()=>{const g=sandbox(),a=enemy(g,0,.3,100),b=enemy(g,1,.3,100);a.hp=50;b.hp=80;g.useCard(give(g,'Requiem'));assert.equal(a.hp,0);assert.equal(b.hp,60);});
@@ -136,3 +136,34 @@ test('资源不足的购买不会推进保底、随机流或消费点数',()=>{c
 test('满手购买仅扣一次牌价，整理弃牌不退费，待整理时再次购买不扣费',()=>{const g=sandbox();g.hand=[];g.giveCards(Array(8).fill('Presto'));g.offers=[g.card('Forte')];const p=g.points;assert.ok(g.claimOffer(0).ok);assert.equal(g.points,p-24);assert.equal(g.pendingCards.length,1);const next=plain(g.offers);assert.equal(g.claimOffer(0).ok,false);assert.equal(g.points,p-24);assert.deepEqual(plain(g.offers),next);assert.ok(g.resolveOverflow(g.hand.map(c=>c.id)).ok);assert.equal(g.points,p-24);assert.equal(g.stats.cardSpent,24);assert.equal(g.stats.cardPurchases.length,1);});
 test('局外预购在零协奏时可直接用，召唤及即兴所得手牌都不另收费',()=>{const g=new Game('1-1',{prepaid:['Guqin','Improvisation','Forte']});g.points=0;for(const type of ['Forte','Improvisation'])assert.ok(g.useCard(g.hand.find(c=>c.type===type).id).ok);assert.ok(g.useCard(g.hand.find(c=>c.type==='Guqin').id,{col:0,row:0}).ok);assert.equal(g.points,0);assert.equal(g.stats.spent,0);assert.equal(g.stats.cardSpent,0);assert.equal(g.hand.length,2);assert.ok(g.hand.every(c=>!CARDS[c.type].summon));const id=g.hand[0].id;assert.ok(g.discard(id));assert.equal(g.points,0);});
 test('已购买指定牌放错目标不消耗，合法目标可在零余额使用',()=>{const g=new Game('1-1');const u=g.place('lyra',0,0);g.offers=[g.card('Presto')];g.points=12;assert.ok(g.claimOffer(0).ok);const id=g.hand[0].id;assert.equal(g.useCard(id,null).ok,false);assert.equal(g.points,0);assert.ok(g.hand.some(c=>c.id===id));assert.ok(g.useCard(id,u.id).ok);assert.equal(g.points,0);assert.equal(g.stats.cardSpent,12);assert.equal(g.stats.cardUses.length,1);});
+
+
+test('所有宽体乐器命中 Boss 的多条声部时只结算一次伤害事件',()=>{
+ for(const [id,col,damage] of [['harp',1,12],['guqin',1,15],['euphonium',1,125],['viola',1,7.5],['cello',1,7.5],['marimba',0,28]]){
+  const g=sandbox();let u;if(id==='guqin'){g.useCard(give(g,'Guqin'),{col,row:0});u=g.units[0];}else u=g.place(id,col,0);
+  const boss=g.spawn(2,true);boss.y=.5;boss.hp=boss.maxHp=1000;let events=0;const apply=g.damageMonster.bind(g);g.damageMonster=(m,...args)=>{if(m.id===boss.id)events++;return apply(m,...args);};
+  g.attack(u);assert.equal(events,1,id);assert.equal(boss.hp,1000-damage,id);assert.equal(u.attacks,1);assert.equal(g.bullets.length,1,id);
+ }
+});
+test('无穷动、强音、突强及回旋曲对 Boss 合并为一次结算且不按列放大',()=>{
+ for(const id of ['flute','harp','marimba','cello']){
+  const g=sandbox(),u=g.place(id,0,0),boss=g.spawn(2,true);boss.y=.5;boss.hp=boss.maxHp=10000;
+  for(const type of ['Infinite','Forte','Rondo'])g.useCard(give(g,type));g.useCard(give(g,'Sforzando'),u.id);
+  const expected=g.directDamage(u)*10+boss.maxHp*.002;let events=0;const apply=g.damageMonster.bind(g);g.damageMonster=(m,...args)=>{if(m.id===boss.id)events++;return apply(m,...args);};
+  g.attack(u);assert.equal(events,1,id);assert.equal(boss.hp,10000-expected,id);assert.equal(u.attacks,1);assert.equal(u.sforzando,false);
+ }
+});
+test('不同宽体乐器及二重奏分身各有独立攻击，不共用 Boss 命中次数',()=>{
+ const g=sandbox(),a=g.place('harp',1,0),b=g.place('harp',1,1),boss=g.spawn(2,true);boss.y=.5;boss.hp=boss.maxHp=1000;
+ g.useCard(give(g,'Duet'),a.id);const clone=g.units.find(u=>u.clone);g.attack(a);g.attack(b);g.attack(clone);
+ assert.equal(boss.hp,970);assert.equal(a.attacks,1);assert.equal(b.attacks,1);assert.equal(clone.attacks,1);assert.equal(g.bullets.length,3);
+});
+test('马林巴对普通敌人保留七段及重音计数，对共享 Boss 只记一次命中',()=>{
+ const g=sandbox(),u=g.place('marimba',0,0),boss=g.spawn(2,true),normal=enemy(g,0,.5,1000);boss.hp=boss.maxHp=1000;
+ g.useCard(give(g,'Rondo'));g.attack(u);assert.equal(boss.hp,970);assert.equal(normal.hp,952);assert.equal(u.hits,9);
+});
+test('合并后的 Boss 攻击只发一次击杀奖励，护盾与易伤也只应用一次',()=>{
+ const g=sandbox(),u=g.place('harp',1,0),boss=g.spawn(2,true);boss.hp=boss.maxHp=1000;boss.shield=10;boss.vulnerableUntil=10;
+ g.useCard(give(g,'Rondo'));g.attack(u);assert.equal(boss.hp,992.5);assert.equal(boss.shield,0);
+ boss.hp=1;const p=g.points;g.attack(u);assert.equal(g.kills,1);assert.equal(g.points,p+10);g.attack(u);assert.equal(g.kills,1);assert.equal(g.points,p+10);
+});
