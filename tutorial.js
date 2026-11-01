@@ -8,10 +8,10 @@ const STEPS = {
  formation: {part:2,title:'让五列都有声音',text:'每列放 1 把里拉琴，共 5 把、90 协奏点。每把会贯穿所在列的全部敌人。'},
  start: {part:2,title:'开始你的第一段演奏',text:'五列已就绪。点击「开始战斗」；目标是守住基地并清除本波敌人，最多演奏 120 秒。'},
  earn: {part:3,title:'观察协奏点增长',text:'协奏点每秒增长，击败敌人也会获得奖励。先让乐器演奏约 12 秒。'},
- claim: {part:3,title:'领取第一张奏法牌',text:'点击候选区的「急板」。领取免费，只有打出时才付费；领取后该槽会自动补牌。'},
- use: {part:4,title:'把急板交给乐器',text:'将手牌「急板」拖到任意里拉琴：花费 12 协奏点，攻速提高 25%，持续 5 秒。也可点牌后点乐器。'},
+ claim: {part:3,title:'购买第一张奏法牌',text:'点击候选区的「急板」，支付 12 协奏点购买。买下后手牌可免费使用，该槽会自动补牌。'},
+ use: {part:4,title:'把急板交给乐器',text:'将已买下的「急板」拖到任意里拉琴：使用不再扣费，攻速提高 25%，持续 5 秒。也可点牌后点乐器。'},
  save: {part:5,title:'为刷新攒一点协奏',text:'候选不会定时更换。继续演奏，攒够 6 协奏点后尝试手动刷新。'},
- refresh: {part:5,title:'亲手刷新一次',text:'点击「刷新 · 6 协奏」，更换整组三张候选。入场首组免费，之后整组刷新都要付费。'},
+ refresh: {part:5,title:'亲手刷新一次',text:'点击「刷新 · 6 协奏」，更换整组三张候选。入场首组免刷新费，购买候选另按标价付费。'},
  play: {part:6,title:'自由演奏，准备迎战',text:'突进怪跑得快，可用奏法牌支援薄弱声部。剩余 20 秒时，Boss 会横跨第 2–4 列。'},
  boss: {part:6,title:'Boss 来了',text:'第 2–4 列可共同攻击这个 Boss，生命共享。最后 20 秒内击败它；漏过扣 10 耐久，控制不延长截止。'},
  finish: {part:6,title:'完成最后一段演奏',text:'清除本波全部敌人即可结算，剩余时间的协奏收入会立即补发。你已学会布阵、调整、奏法和刷新；通关后前往星摇岛。'}
@@ -52,7 +52,7 @@ class TutorialGuide {
   else if(this.step==='remove'&&!first)this.step='formation';
   else if(this.step==='formation'&&g.permanentCount===5&&[0,1,2,3,4].every(col=>g.units.some(u=>u.profile.id==='lyra'&&u.col===col)))this.step='start';
   else if(this.step==='start'&&g.phase==='running')this.step='earn';
-  else if(this.step==='earn'&&g.elapsed>=12)this.pauseAt('claim');
+  else if(this.step==='earn'&&g.elapsed>=12&&g.points+1e-7>=global.Meadow.CARDS.Presto.cost)this.pauseAt('claim');
   else if(this.step==='claim'&&g.hand.some(c=>c.type==='Presto'&&!this.preClaimIds.has(c.id)))this.step='use';
   else if(this.step==='use'&&g.stats.cardUses.some(c=>c.type==='Presto'))this.resumeAt('save');
   else if(this.step==='save'&&g.points+1e-7>=6)this.pauseAt('refresh');
