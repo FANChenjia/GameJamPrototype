@@ -3,13 +3,29 @@
 const $=s=>document.querySelector(s), D=ConcertoData, M=Meadow, {CARDS,UNITS}=M;
 const STORE='concerto-meadow.campaign.v2',esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let progress=M.initialProgress();try{const s=JSON.parse(localStorage.getItem(STORE));if(s&&s.version===2&&Number.isFinite(s.rhythm)&&s.rhythm>=0&&Number.isInteger(s.unlocked)&&s.unlocked>=0&&s.unlocked<=9&&Array.isArray(s.cleared)){progress={...progress,...s,cleared:s.cleared.filter(id=>D.levels.some(l=>l.id===id)),shops:s.shops||{}};}}catch{}
-let game=null,painter=null,currentLevel=D.levels[progress.unlocked],activeIsland=currentLevel.island,selectedTemplate=null,selectedCard=null,selectedUnit=null,resumeTactical=false,view='map',toastTimer,last=performance.now(),lastHud=0,settled=false,overflowKeep=new Set(),overflowResume=false,drag=null,suppressClick=0,tutorialSignature='',tutorialTargets=[],tutorialHoles=[];
+let game=null,painter=null,currentLevel=D.levels[progress.unlocked],activeIsland=currentLevel.island,selectedTemplate=null,selectedCard=null,selectedUnit=null,resumeTactical=false,view='map',toastTimer,last=performance.now(),lastHud=0,settled=false,overflowKeep=new Set(),overflowResume=false,drag=null,suppressClick=0,tutorialSignature='',tutorialTargets=[],tutorialHoles=[],progressResetResume=null;
 const canvas=$('#battle-canvas'),ghost=document.createElement('div');ghost.className='drag-ghost hidden';document.body.append(ghost);
 const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches??false;
 function persist(){try{localStorage.setItem(STORE,JSON.stringify(progress));}catch{}}
 function toast(s){$('#toast').textContent=s;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),2600);}
 function time(s){s=Math.ceil(Math.max(0,s-1e-7));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
 function switchView(next){view=next;if(next!=='battle'){$('#tutorial-shade').classList.add('hidden');$('#tutorial-panel').classList.add('hidden');}for(const [id,key] of [['#map-screen','map'],['#shop-screen','shop'],['#battle-screen','battle']])$(id).classList.toggle('hidden',key!==next);$('#map-open').classList.toggle('hidden',next==='map');$('#resume-game').classList.toggle('hidden',next!=='map'||!game||['won','lost'].includes(game.phase));$('#rhythm-points').textContent=progress.rhythm;if(next==='battle'&&painter)requestAnimationFrame(()=>painter.resize());}
+function openProgressReset(){
+ const dialog=$('#progress-reset-dialog');if(dialog.open)return;progressResetResume=game?.phase==='running'?game:null;game?.pause();$('#tutorial-panel').classList.add('hidden');$('#tutorial-shade').classList.add('hidden');dialog.showModal();$('#progress-reset-cancel').focus();
+}
+function resetAllProgress(){
+ progressResetResume=null;game?.pause();if(drag){try{drag.el.releasePointerCapture?.(drag.pointer);}catch{}endDrag();}clearSelected();
+ for(const el of document.querySelectorAll('.card-fly,.card-drop-burst'))el.remove();
+ progress=M.initialProgress();try{localStorage.removeItem(STORE);}catch{}persist();game=null;
+ if(painter){painter.game=null;painter.draggingId=null;painter.showRange=false;}
+ currentLevel=D.levels[0];activeIsland=1;settled=false;resumeTactical=false;overflowResume=false;overflowKeep.clear();suppressClick=0;tutorialSignature='';tutorialTargets=[];tutorialHoles=[];handSignature='';offerSignature='';
+ for(const el of document.querySelectorAll('.tutorial-target'))el.classList.remove('tutorial-target');
+ for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();$('#range-toggle').setAttribute('aria-pressed','false');showMap();toast('全部进度已重置');
+}
+for(const button of document.querySelectorAll('.reset-progress-trigger'))button.onclick=openProgressReset;
+$('#progress-reset-cancel').onclick=()=>$('#progress-reset-dialog').close();
+$('#progress-reset-confirm').onclick=resetAllProgress;
+$('#progress-reset-dialog').addEventListener('close',()=>{const resume=progressResetResume;progressResetResume=null;if(resume&&resume===game)game.start();if(game&&view==='battle')renderAll();});
 $('#brand-icon').innerHTML=Art.icon('harp');
 function effect(c){return c.description.replace('；开局开放，仅局外商店','').replace('、不解锁内容','');}
 function cardArt(c){return `<span class="card-visual${c.summon?' placeholder':''}"><img src="${c.art}" alt="${esc(c.name)}" loading="lazy" draggable="false"></span>`;}
@@ -46,7 +62,7 @@ function updateHud(){if(!game)return;$('#rhythm-points').textContent=progress.rh
 function renderAll(){if(!game)return;syncGuide();renderHand();renderDraw();renderBench();updateHud();$('#arrange-controls').classList.toggle('hidden',!game.arranging);}
 function focusTutorialTarget(){const guide=game?.guide;if(!guide?.active)return;const selectors=guide.targets(),index=guide.step==='use'&&selectedCard?1:0;document.querySelector(selectors[index]||selectors[0])?.scrollIntoView({behavior:reducedMotion?'auto':'smooth',block:'center'});}
 function positionTutorial(){
- const guide=game?.guide,panel=$('#tutorial-panel'),shade=$('#tutorial-shade');if(!guide?.active||view!=='battle'){shade.classList.add('hidden');return;}
+ const guide=game?.guide,panel=$('#tutorial-panel'),shade=$('#tutorial-shade');if($('#progress-reset-dialog').open||!guide?.active||view!=='battle'){shade.classList.add('hidden');return;}
  const focused=!['play','finish'].includes(guide.step),vw=window.innerWidth,vh=window.innerHeight;panel.setAttribute('role',focused?'dialog':'region');panel.setAttribute('aria-modal',String(focused));
  tutorialHoles=tutorialTargets.map(el=>{const r=el.getBoundingClientRect();return {x:Math.max(0,r.left-6),y:Math.max(0,r.top-6),right:Math.min(vw,r.right+6),bottom:Math.min(vh,r.bottom+6)};}).filter(r=>r.right>r.x&&r.bottom>r.y);
  shade.classList.toggle('hidden',!focused);if(focused){shade.setAttribute('viewBox',`0 0 ${vw} ${vh}`);const cutouts=tutorialHoles.map(r=>`<rect x="${r.x}" y="${r.y}" width="${r.right-r.x}" height="${r.bottom-r.y}" rx="9"/>`).join('');const markup=`<defs><mask id="tutorial-cutouts"><rect width="${vw}" height="${vh}" fill="white"/><g fill="black">${cutouts}</g></mask></defs><rect width="${vw}" height="${vh}" fill="#3e2d23" opacity=".62" mask="url(#tutorial-cutouts)"/>`;if(shade._markup!==markup){shade._markup=markup;shade.innerHTML=markup;}}
@@ -55,10 +71,10 @@ function positionTutorial(){
  x=Math.max(12,Math.min(vw-width-12,x));y=Math.max(12,Math.min(vh-height-12,y));panel.style.left=x+'px';panel.style.top=y+'px';panel.dataset.side=side;
  const arrow=$('#tutorial-arrow');arrow.classList.toggle('hidden',!r||r.bottom<=0||r.top>=vh);if(r){arrow.style.left=(side==='right'?-6:side==='left'?width-6:Math.max(18,Math.min(width-24,r.left+r.width/2-x-5)))+'px';arrow.style.top=(side==='top'?height-6:side==='bottom'?-6:Math.max(18,Math.min(height-24,r.top+r.height/2-y-5)))+'px';}
 }
-function tutorialEventAllowed(e){const guide=game?.guide;if(!guide?.active||view!=='battle'||['play','finish'].includes(guide.step))return true;if(e.target.closest?.('#tutorial-panel'))return true;if(e.detail===0&&tutorialTargets.some(el=>el===e.target||el.contains(e.target)))return true;return tutorialHoles.some(r=>e.clientX>=r.x&&e.clientX<=r.right&&e.clientY>=r.y&&e.clientY<=r.bottom);}
+function tutorialEventAllowed(e){if($('#progress-reset-dialog').open||e.target.closest?.('#progress-reset-dialog,.reset-progress-trigger'))return true;const guide=game?.guide;if(!guide?.active||view!=='battle'||['play','finish'].includes(guide.step))return true;if(e.target.closest?.('#tutorial-panel'))return true;if(e.detail===0&&tutorialTargets.some(el=>el===e.target||el.contains(e.target)))return true;return tutorialHoles.some(r=>e.clientX>=r.x&&e.clientX<=r.right&&e.clientY>=r.y&&e.clientY<=r.bottom);}
 document.addEventListener('pointerdown',e=>{if(!tutorialEventAllowed(e)){if(e.pointerType!=='touch')e.preventDefault();e.stopImmediatePropagation();}},true);
 document.addEventListener('click',e=>{if(!tutorialEventAllowed(e)){e.preventDefault();e.stopImmediatePropagation();}},true);
-document.addEventListener('keydown',e=>{const guide=game?.guide;if(!guide?.active||view!=='battle'||['play','finish'].includes(guide.step))return;if(e.key==='Tab'){const controls=[...new Set([...tutorialTargets.flatMap(el=>el.matches('button')?[el]:[...el.querySelectorAll('button')]),...$('#tutorial-panel').querySelectorAll('button')])].filter(el=>!el.disabled&&el.getClientRects().length);if(!controls.length)return;const index=controls.indexOf(document.activeElement),next=(index+(e.shiftKey?-1:1)+controls.length)%controls.length;e.preventDefault();controls[next].focus();}else if(e.code==='Space'&&e.target===document.body){e.preventDefault();e.stopImmediatePropagation();}},true);
+document.addEventListener('keydown',e=>{if($('#progress-reset-dialog').open)return;const guide=game?.guide;if(!guide?.active||view!=='battle'||['play','finish'].includes(guide.step))return;if(e.key==='Tab'){const controls=[...new Set([...tutorialTargets.flatMap(el=>el.matches('button')?[el]:[...el.querySelectorAll('button')]),...$('#tutorial-panel').querySelectorAll('button'),$('#reset-progress')])].filter(el=>!el.disabled&&el.getClientRects().length);if(!controls.length)return;const index=controls.indexOf(document.activeElement),next=(index+(e.shiftKey?-1:1)+controls.length)%controls.length;e.preventDefault();controls[next].focus();}else if(e.code==='Space'&&e.target===document.body){e.preventDefault();e.stopImmediatePropagation();}},true);
 window.addEventListener('resize',positionTutorial);window.addEventListener('scroll',positionTutorial,{passive:true});
 
 function syncGuide(){
@@ -69,7 +85,7 @@ function syncGuide(){
  if(guide.active&&['place','move','remove','formation','start','claim','use','refresh','boss'].includes(guide.step))requestAnimationFrame(()=>{if(!drag?.active)focusTutorialTarget();});
 }
 function renderTutorial(){
- const guide=game?.guide,panel=$('#tutorial-panel');panel.classList.toggle('hidden',!guide?.active);
+ const guide=game?.guide,panel=$('#tutorial-panel');if($('#progress-reset-dialog').open){panel.classList.add('hidden');$('#tutorial-shade').classList.add('hidden');return;}panel.classList.toggle('hidden',!guide?.active);
  const targets=new Set(guide?.active?guide.targets().flatMap(s=>[...document.querySelectorAll(s)]):[]);tutorialTargets=[...targets];if(!guide?.active)$('#tutorial-shade').classList.add('hidden');
  for(const el of document.querySelectorAll('.tutorial-target'))if(!targets.has(el))el.classList.remove('tutorial-target');
  for(const el of targets)el.classList.add('tutorial-target');
