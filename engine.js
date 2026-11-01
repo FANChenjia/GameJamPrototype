@@ -14,7 +14,9 @@ class Game {
  reset(){this.random=seeded(this.seed);this.seq=0;this.phase='ready';this.elapsed=0;this.tick=0;this.buffer=0;this.wave=0;this.waveStart=0;this.skippedTime=0;this.points=this.level.initial;this.base=10;this.kills=0;this.units=[];this.monsters=[];this.areas=[];this.bullets=[];this.effects=[];this.pulses=[];this.offers=[];this.guarantee=null;this.freeRefresh=0;this.hand=[];this.pendingCards=[];this.result=null;this.arranging=false;this.dimUntil=0;this.config={duration:120,pointsPerSecond:this.level.income};this.stats={spent:0,refreshes:0,refreshSpent:0,cardSpent:0,cardPurchases:[],leaks:0,normalLeaks:0,rushLeaks:0,cardUses:[],bossTimes:[],minPoints:this.points,waveSettlements:[]};this.giveCards(this.prepaid);this.prepareWave();this.offers=Array.from({length:3},(_,i)=>this.card(this.tutorialEnabled?['Presto','Forte','Diminuendo'][i]:weighted('weight',this.random)));this.guide?.reset();}
  guideBlocks(action,data={}){return !!(this.guide?.active&&!this.guide.allows(action,data));}
  get waveElapsed(){return this.elapsed-this.waveStart;}
- get remainingTime(){return Math.max(0,Math.round((120-this.elapsed-this.skippedTime)*100)/100);}
+ get waveRemaining(){return Math.max(0,Math.round((this.level.waveDuration-this.waveElapsed)*100)/100);}
+ get overtime(){return this.waveElapsed>=this.level.waveDuration-1e-7;}
+ get remainingTime(){return this.result?.win?0:this.waveRemaining+(this.level.waves.length-this.wave-1)*this.level.waveDuration;}
  get currentWave(){return this.level.waves[this.wave];}
  get permanentCount(){return this.units.filter(u=>!u.clone&&!u.profile.summon).length;}
  get summonCount(){return this.units.filter(u=>!u.clone&&u.profile.summon).length;}
@@ -31,7 +33,7 @@ class Game {
  center(u){return {x:u.col+u.profile.width/2,row:u.row+u.profile.height/2};}
  at(col,row){return this.units.find(u=>!u.clone&&u.profile.shape.some(([x,y])=>u.col+x===col&&u.row+y===row));}
  canPlace(p,col,row,ignoreId=null){p=this.profile(p);if(!p||!Number.isInteger(col)||!Number.isInteger(row))return false;const moving=this.units.find(u=>u.id===ignoreId);if(!moving){if(p.summon?this.summonCount>=2:this.permanentCount>=this.level.cap)return false;if(!p.summon&&p.unlock>this.level.island)return false;}if(!p.shape.every(([x,y])=>col+x>=0&&col+x<5&&row+y>=0&&row+y<4&&!this.units.some(u=>!u.clone&&u.id!==ignoreId&&u.profile.shape.some(([a,b])=>u.col+a===col+x&&u.row+b===row+y))))return false;if(p.family==='bowed'){const lanes=Array.from({length:p.width},(_,i)=>col+i);if(this.units.some(u=>!u.clone&&u.id!==ignoreId&&u.profile.family==='bowed'&&this.naturalLanes(u).some(l=>lanes.includes(l))))return false;}return true;}
- place(p,col,row,options={}){p=this.profile(p);this.lastError='';if(this.guideBlocks('place',{profile:p,col,row})){this.lastError=this.guide.hint;return null;}if(!p){this.lastError='未知乐器';return null;}if(['won','lost'].includes(this.phase)||this.arranging){this.lastError='当前不能新布置乐器';return null;}if(p.summon&&!options.summon){this.lastError='需要对应召唤牌';return null;}if(!this.canPlace(p,col,row)){this.lastError='检查空格、乐器上限或共振覆盖列';return null;}if(!options.free&&this.points+1e-7<p.cost){this.lastError='协奏点不足';return null;}if(!options.free){this.points-=p.cost;this.stats.spent+=p.cost;}const u={id:++this.seq,profile:copy(p),col,row,paidCost:options.free?0:p.cost,permSpeed:0,speedBonus:0,rangeBonus:0,progress:0,attacks:0,hits:0,buffs:{},flash:0,clone:false,expires:p.summon&&p.id!=='suona'?this.wave:null};this.units.push(u);return u;}
+ place(p,col,row,options={}){p=this.profile(p);this.lastError='';if(this.guideBlocks('place',{profile:p,col,row})){this.lastError=this.guide.hint;return null;}if(!p){this.lastError='未知乐器';return null;}if(['won','lost'].includes(this.phase)||this.arranging){this.lastError='当前不能新布置乐器';return null;}if(p.summon&&!options.summon){this.lastError='需要对应召唤牌';return null;}if(!this.canPlace(p,col,row)){this.lastError='检查空格、乐器上限或共振覆盖列';return null;}if(!options.free&&this.points+1e-7<p.cost){this.lastError='协奏点不足';return null;}if(!options.free){this.points-=p.cost;this.stats.spent+=p.cost;}const u={id:++this.seq,profile:copy(p),col,row,paidCost:options.free?0:p.cost,permSpeed:0,speedBonus:0,rangeBonus:0,progress:0,attacks:0,accentProgress:0,buffs:{},flash:0,clone:false,expires:p.summon&&p.id!=='suona'?this.wave:null};this.units.push(u);return u;}
  move(id,col,row){if(this.guideBlocks('move',{id,col,row}))return false;const u=this.units.find(u=>u.id===id&&!u.clone);if(!u||!this.canEdit||!this.canPlace(u.profile,col,row,id))return false;u.col=col;u.row=row;for(const clone of this.units.filter(x=>x.parent===id)){clone.col=col;clone.row=row;}return true;}
  remove(id){const ids=new Set(this.units.filter(u=>u.id===id||u.parent===id).map(u=>u.id));this.units=this.units.filter(u=>!ids.has(u.id));this.areas=this.areas.filter(a=>!ids.has(a.unitId));for(const m of this.monsters)m.marks=(m.marks||[]).filter(mark=>!ids.has(mark.source));}
  sell(id){if(this.guideBlocks('sell',{id}))return fail(this.guide.hint);const u=this.units.find(u=>u.id===id&&!u.clone);if(!u||this.phase!=='ready'||this.arranging)return fail('仅准备阶段可移除乐器');const refund=u.paidCost;this.remove(id);this.points+=refund;return ok(`已移除，返还 ${refund} 协奏点`);}
@@ -70,15 +72,15 @@ class Game {
  if(c.id==='Requiem')for(const m of [...this.monsters])this.damageMonster(m,m.maxHp-m.hp,{});
  if(c.id==='Improvisation')this.giveCards([weighted('weight',this.random),weighted('weight',this.random)]);
  if(c.id==='Deduction')this.freeRefresh++;
- if(c.id==='Duet'){const clone=copy(u);Object.assign(clone,{id:++this.seq,clone:true,parent:u.id,until:this.elapsed+10,progress:0,attacks:0,hits:0,flash:.3,windSnapshot:this.windFactor(u),trumpetSnapshot:this.units.some(x=>!x.clone&&x.profile.id==='euphonium'),sforzando:false});this.units.push(clone);}
+ if(c.id==='Duet'){const clone=copy(u);Object.assign(clone,{id:++this.seq,clone:true,parent:u.id,until:this.elapsed+10,progress:0,attacks:0,accentProgress:0,flash:.3,windSnapshot:this.windFactor(u),trumpetSnapshot:this.units.some(x=>!x.clone&&x.profile.id==='euphonium'),sforzando:false});this.units.push(clone);}
  return ok('奏法已生效');}
  spawn(lane,boss=false,rush=false){const p=this.currentWave,maxHp=boss?p.bossHp:rush?p.rushHp:p.hp;const shield=!boss&&!rush&&this.level.island>=3&&this.spawnIndex<Math.floor(p.count*.2)?maxHp*.2:0;const m={id:++this.seq,lane,lanes:boss?this.bossLanes(lane):[lane],rush,travelTime:boss?20:rush?p.rushTravelTime:p.travelTime,y:0,hp:maxHp,maxHp,shield,maxShield:shield,boss,variant:boss?1:(this.spawnIndex%3),wobble:this.random()*6.28,hit:0,slowed:false,slow:0,marks:[],born:this.elapsed,stunUntil:0,freezeUntil:0,vulnerableUntil:0};this.monsters.push(m);return m;}
  front(lane){let front=null;for(const m of this.monsters)if(m.hp>0&&this.monsterLanes(m).includes(lane)&&(!front||m.y>front.y+1e-9))front=m;return front;}
  addArea(unit,lane,center,kind='bow'){const start=clamp(center-1/6,0,2/3),key=kind==='rhapsody'?`r:${lane}`:`b:${unit.id}:${lane}`;let a=this.areas.find(a=>a.key===key);if(a){a.start=start;a.end=start+1/3;a.until=this.elapsed+(kind==='bow'?.5:2);a.pulse=.22;return a;}a={id:++this.seq,key,kind,lane,start,end:start+1/3,unitId:unit.id,bornAt:this.elapsed,until:this.elapsed+(kind==='bow'?.5:2),duration:kind==='bow'?.5:2,nextTick:this.elapsed+.5,slow:kind==='rhapsody'?.15:({violin:.15,viola:.25,cello:.4}[unit.profile.id]||.15),pulse:.22,ticks:0,clone:false};this.areas.push(a);return a;}
  areaContains(a,m){return this.monsterLanes(m).includes(a.lane)&&m.y>=a.start-1e-9&&m.y<=a.end+1e-9;}
+ countAccent(u){if(!u||u.clone||u.profile.family!=='percussion')return;u.accentProgress++;while(u.accentProgress>=100){u.accentProgress-=100;this.stun();}}
  stun(){for(const m of this.monsters)if(m.hp>0)m.stunUntil=Math.max(m.stunUntil,this.elapsed+1);}
- damageMonster(m,damage,{source=null,bypass=false,mark=false}={}){if(!m||m.hp<=0||damage<=0)return 0;damage*=m.vulnerableUntil>this.elapsed?1.25:1;const old=m.hp,absorbed=bypass?0:Math.min(m.shield||0,damage);m.shield=Math.max(0,(m.shield||0)-absorbed);m.hp=Math.max(0,m.hp-damage+absorbed);const lost=old-m.hp;m.hit=.2;if(!mark)for(const tag of m.marks||[])tag.damage+=lost;
- if(source&&!source.clone&&source.profile.family==='percussion'){source.hits++;while(source.hits>=100){source.hits-=100;this.stun();}}
+ damageMonster(m,damage,{source=null,bypass=false,mark=false}={}){if(!m||m.hp<=0||damage<=0)return 0;damage*=m.vulnerableUntil>this.elapsed?1.25:1;const old=m.hp,absorbed=bypass?0:Math.min(m.shield||0,damage);m.shield=Math.max(0,(m.shield||0)-absorbed);m.hp=Math.max(0,m.hp-damage+absorbed);const lost=old-m.hp;m.hit=.2;if(source?.profile.id==='marimba')this.countAccent(source);if(!mark)for(const tag of m.marks||[])tag.damage+=lost;
  this.effects.push({x:m.lane+.5,y:m.y,t:0,life:.4,burst:true,color:'#f4e4a1'});if(damage>=8)this.effects.push({x:m.lane+.5,y:m.y,t:0,life:.55,text:`−${Math.round(damage)}`,color:'#5f7050'});
  if(m.hp<=0&&!m.rewarded){m.rewarded=true;this.kills++;let reward=10;if(!m.boss){this.normalKills++;const paid=Math.floor(this.normalKills*this.currentWave.normalRewardBudget*1000/this.currentWave.count);reward=(paid-this.normalRewardPaid)/1000;this.normalRewardPaid=paid;}this.points=Math.round((this.points+reward)*1000)/1000;if(m.boss)this.stats.bossTimes.push({wave:this.wave,time:this.elapsed-m.born});this.effects.push({x:m.lane+.5,y:m.y,t:0,life:.7,text:`+${reward} ✦`,color:'#967a38'});}return lost;}
  mark(u,m){if(m.hp>0&&!m.marks.some(t=>t.source===u.id))m.marks.push({source:u.id,until:this.elapsed+10,damage:0});}
@@ -91,7 +93,7 @@ class Game {
  for(const m of targets){
   const rondo=this.active(u,'Rondo')?m.maxHp*(m.boss?.002:.02)*(u.clone?.5:1):0;
   if(m.boss){
-   // Boss: one health/shield application, hit event and reward check per attack.
+   // Boss: one health/shield application and reward check per attack.
    // Marimba's seven notes total one AD; Rondo adds its bonus only once.
    this.damageMonster(m,power+rondo,{source:u,bypass});
   }else {
@@ -101,29 +103,33 @@ class Game {
   if(u.profile.id==='guqin'&&!u.clone)this.mark(u,m);
  }
  if(!u.clone&&this.active(u,'Rhapsody'))for(const lane of lanes){const front=this.front(lane)||targets.find(m=>this.monsterLanes(m).includes(lane));if(front)this.addArea(u,lane,front.y,'rhapsody');}
- if(!u.clone){if(u.profile.id==='harp')u.permSpeed=Math.min(1,u.permSpeed+.01);if(u.profile.id==='lyra'&&u.attacks%10===0)this.skill(u);if(['snare','suona'].includes(u.profile.id)&&u.attacks%5===0)this.skill(u);if(u.profile.id==='gong')this.skill(u);}
+ if(!u.clone){
+  // Marimba's passive counts its actual damage events inside damageMonster.
+  if(u.profile.family==='percussion'&&u.profile.id!=='marimba')this.countAccent(u);
+  if(u.profile.id==='harp')u.permSpeed=Math.min(1,u.permSpeed+.01);if(u.profile.id==='lyra'&&u.attacks%10===0)this.skill(u);if(['snare','suona'].includes(u.profile.id)&&u.attacks%5===0)this.skill(u);if(u.profile.id==='gong')this.skill(u);}
  u.sforzando=false;const center=this.center(u),origin={x:center.x,y:(.65+center.row*.08-.04)/.56};this.pulses.push({unitId:u.id,...origin,lanes,t:0,life:.4,clone:u.clone});for(const m of targets.slice(0,8))this.bullets.push({id:++this.seq,unitId:u.id,from:{...origin},to:{x:(this.monsterLanes(m).find(l=>lanes.includes(l))??m.lane)+.5,y:m.y},t:0,life:.22,note:'♪',clone:u.clone});return true;}
  finish(win,reason=''){for(const u of [...this.units])if(u.clone||u.profile.summon)this.remove(u.id);this.offers=[];this.guarantee=null;this.phase=win?'won':'lost';this.buffer=0;this.result={win,reason,time:this.elapsed,kills:this.kills,points:this.points,base:this.base,stats:copy(this.stats)};}
  endWave(){
   if(this.result)return;
-  if(!this.bossSpawned||this.batchIndex<this.schedule.length||this.monsters.some(m=>m.hp>0)||this.base<=0){this.finish(false,'未能在本波结束前清场');return;}
+  if(this.base<=0){this.finish(false,'防线失守');return;}
+  if(!this.bossSpawned||this.batchIndex<this.schedule.length||this.monsters.some(m=>m.hp>0))return;
   const remainingSeconds=Math.max(0,Math.round((this.level.waveDuration-this.waveElapsed)*100)/100),bonus=Math.round(remainingSeconds*this.level.income*1000)/1000;
   this.points=Math.round((this.points+bonus)*1000)/1000;this.skippedTime=Math.round((this.skippedTime+remainingSeconds)*100)/100;
-  this.stats.waveSettlements.push({wave:this.wave+1,time:this.elapsed,remainingSeconds,bonus,points:this.points});
+  this.stats.waveSettlements.push({wave:this.wave+1,time:this.elapsed,remainingSeconds,overtimeSeconds:Math.max(0,Math.round((this.waveElapsed-this.level.waveDuration)*100)/100),bonus,points:this.points});
   for(const u of [...this.units])if(!u.clone&&u.expires===this.wave)this.remove(u.id);
   if(this.wave===this.level.waves.length-1)this.finish(true);
   else {this.wave++;this.waveStart=this.elapsed;this.prepareWave();this.phase='running';}
  }
- step(){const dt=.01,t=this.elapsed,w=this.waveElapsed;this.points=Math.round((this.points+this.level.income*dt)*1000)/1000;
+ step(){const dt=.01,t=this.elapsed,w=this.waveElapsed;let overtimeLeak=false;this.points=Math.round((this.points+this.level.income*dt)*1000)/1000;
  while(this.batchIndex<this.schedule.length&&this.schedule[this.batchIndex].at<=w+1e-7){this.spawn(this.schedule[this.batchIndex].lane,false,this.schedule[this.batchIndex].rush);this.spawnIndex++;this.batchIndex++;}
  if(!this.bossSpawned&&w+1e-7>=this.level.waveDuration-20){this.spawn(this.currentWave.bossLane,true);this.bossSpawned=true;}
  for(const u of [...this.units])if(u.clone&&u.until<=t+1e-8)this.remove(u.id);
  this.areas=this.areas.filter(a=>a.until>t+1e-8);for(const a of this.areas){a.age=t-a.bornAt;a.pulse=Math.max(0,a.pulse-dt);if(a.kind==='rhapsody')while(a.nextTick<=t+1e-8){a.nextTick+=.5;a.ticks++;for(const m of this.monsters)if(m.hp>0&&this.areaContains(a,m)&&!this.areas.some(b=>b.kind==='bow'&&this.areaContains(b,m))){if(m.boss&&t+1e-8<(m.nextRhapsodyHit||0))continue;this.damageMonster(m,7.5,{});if(m.boss)m.nextRhapsodyHit=t+.5;}}}
  for(const m of this.monsters)for(const tag of [...m.marks])if(tag.until<=t+1e-8){m.marks=m.marks.filter(x=>x!==tag);this.damageMonster(m,tag.damage*.3,{mark:true});}
  for(const u of this.units){u.flash=Math.max(0,u.flash-dt);u.speedBonus=u.permSpeed;const hasTarget=this.monsters.some(m=>m.hp>0&&this.intersects(m,this.lanes(u)));if(!hasTarget)continue;u.progress+=this.attackSpeed(u)*dt;while(u.progress>=1-1e-8){u.progress-=1;if(!this.attack(u)){u.progress=Math.max(0,u.progress);break;}}}
- for(const m of this.monsters){if(m.hp<=0)continue;const zoneSlow=Math.max(0,...this.areas.filter(a=>this.areaContains(a,m)).map(a=>a.slow));m.slow=Math.min(.6,zoneSlow+(this.dimUntil>t?.3:0));m.slowed=m.slow>0;const frozen=m.freezeUntil>t||m.stunUntil>t;m.y+=frozen?0:dt/(m.travelTime||(m.boss?20:28))*(1-m.slow);m.hit=Math.max(0,m.hit-dt);if(m.y>=1-1e-8){m.hp=0;this.base-=m.boss?10:1;this.stats.leaks++;if(!m.boss){this.stats.normalLeaks++;if(m.rush)this.stats.rushLeaks++;}}}
+ for(const m of this.monsters){if(m.hp<=0)continue;const zoneSlow=Math.max(0,...this.areas.filter(a=>this.areaContains(a,m)).map(a=>a.slow));m.slow=Math.min(.6,zoneSlow+(this.dimUntil>t?.3:0));m.slowed=m.slow>0;const frozen=m.freezeUntil>t||m.stunUntil>t;m.y+=frozen?0:dt/(m.travelTime||(m.boss?20:28))*(1-m.slow);m.hit=Math.max(0,m.hit-dt);if(m.y>=1-1e-8){m.hp=0;const late=w+dt>=this.level.waveDuration-1e-7;if(late){overtimeLeak=true;this.base=0;}else this.base-=m.boss?10:1;this.stats.leaks++;if(!m.boss){this.stats.normalLeaks++;if(m.rush)this.stats.rushLeaks++;}if(this.base<=0)break;}}
  this.monsters=this.monsters.filter(m=>m.hp>0);for(const e of this.effects)e.t+=dt;this.effects=this.effects.filter(e=>e.t<e.life).slice(-160);for(const e of this.pulses)e.t+=dt;this.pulses=this.pulses.filter(e=>e.t<e.life).slice(-60);for(const e of this.bullets)e.t+=dt;this.bullets=this.bullets.filter(e=>e.t<e.life).slice(-140);
- this.tick++;this.elapsed=this.tick/100;this.stats.minPoints=Math.min(this.stats.minPoints,this.points);if(this.base<=0){this.finish(false,'防线失守');return;}if((this.bossSpawned&&this.batchIndex>=this.schedule.length&&!this.monsters.length)||this.waveElapsed>=this.level.waveDuration-1e-7)this.endWave();}
+ this.tick++;this.elapsed=this.tick/100;this.stats.minPoints=Math.min(this.stats.minPoints,this.points);if(this.base<=0){this.finish(false,overtimeLeak?'超时后敌人触底':'防线失守');return;}if(this.bossSpawned&&this.batchIndex>=this.schedule.length&&!this.monsters.length)this.endWave();}
  update(dt){if(this.phase!=='running'||!Number.isFinite(dt)||dt<=0)return;this.buffer+=dt;while(this.buffer>=.01-1e-9&&this.phase==='running'){this.buffer-=.01;this.step();}if(this.phase!=='running')this.buffer=0;}
  advance(seconds){this.update(seconds);}
  snapshot(){return copy({level:this.level.id,phase:this.phase,wave:this.wave,elapsed:this.elapsed,points:this.points,base:this.base,units:this.units,monsters:this.monsters,hand:this.hand,offers:this.offers,result:this.result});}

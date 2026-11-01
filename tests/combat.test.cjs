@@ -28,7 +28,7 @@ function playBaseline(level,cards=true,seed){
  assert.ok(safety<15000);return g;
 }
 
-test('配置：5 岛 10 关 24 波，均为 120 秒',()=>{assert.equal(DATA.levels.length,10);assert.equal(DATA.levels.reduce((n,l)=>n+l.waves.length,0),24);for(const l of DATA.levels)assert.equal(l.waveDuration*l.waves.length,120);});
+test('配置：5 岛 10 关 24 波，标准时长均为 120 秒',()=>{assert.equal(DATA.levels.length,10);assert.equal(DATA.levels.reduce((n,l)=>n+l.waves.length,0),24);for(const l of DATA.levels)assert.equal(l.waveDuration*l.waves.length,120);});
 test('概率：20 张局外牌，17 张局内牌，各为 100%',()=>{assert.equal(DATA.cards.length,20);assert.equal(DATA.cards.filter(c=>c.weight).length,17);assert.equal(DATA.cards.reduce((n,c)=>n+c.weight,0),100);assert.equal(DATA.cards.reduce((n,c)=>n+c.shopWeight,0),100);});
 test('即兴池绝不生成召唤；局外从开局即含三个召唤',()=>{const r=seeded(100);for(let i=0;i<10000;i++)assert.equal(CARDS[weighted('weight',r)].summon,null);for(const id of ['Guqin','Suona','Luo']){assert.equal(CARDS[id].weight,0);assert.ok(CARDS[id].shopWeight>0);assert.equal(UNITS[CARDS[id].summon].unlock,1);}});
 test('格子方向：宽体横向覆盖，马林巴占满一行',()=>{const g=sandbox();const harp=g.place('harp',0,0);assert.deepEqual(plain(g.lanes(harp)),[0,1]);assert.equal(g.canPlace('marimba',0,1),true);const m=g.place('marimba',0,1);assert.equal(m.profile.shape.length,5);assert.equal(g.canPlace('lyra',4,1),false);assert.equal(g.canPlace('euphonium',4,2),false);});
@@ -42,9 +42,9 @@ test('协奏包含自身与唢呐，配对增伤按加法区',()=>{const g=sandb
 test('上低音号只减半一次，小号享配对伤害',()=>{const g=sandbox(),u=g.place('trumpet',0,0);g.place('euphonium',1,0);g.place('euphonium',3,0);assert.equal(g.attackSpeed(u),.5);assert.equal(g.windFactor(u),3.25);});
 test('临时攻速异名相加、同名刷新不叠加，常驻共享 +100% 上限',()=>{const g=sandbox(),u=g.place('flute',0,0);u.permSpeed=1;g.useCard(give(g,'Presto'),u.id);g.useCard(give(g,'Presto'),u.id);g.useCard(give(g,'Prestissimo'),u.id);g.useCard(give(g,'Cadenza'));assert.equal(g.attackSpeed(u),8.25);g.elapsed=5;assert.equal(g.attackSpeed(u),4.5);g.elapsed=10;assert.equal(g.attackSpeed(u),3);});
 test('护盾优先吸收，切分直接伤生命且不消耗护盾',()=>{const g=sandbox(),u=g.place('lyra',0,0),m=enemy(g,0);m.shield=20;g.attack(u);assert.equal(m.hp,100);assert.equal(m.shield,10);g.useCard(give(g,'Syncopation'));g.attack(u);assert.equal(m.hp,90);assert.equal(m.shield,10);});
-test('马林巴对 Boss 合并为一次 28 直伤加一次回旋曲附伤',()=>{const g=sandbox(),u=g.place('marimba',0,0),m=enemy(g,0,.3,1000,true);g.useCard(give(g,'Rondo'));g.attack(u);assert.equal(m.hp,970);assert.equal(u.hits,1);});
+test('马林巴对 Boss 合并为一次 28 直伤加一次回旋曲附伤',()=>{const g=sandbox(),u=g.place('marimba',0,0),m=enemy(g,0,.3,1000,true);g.useCard(give(g,'Rondo'));g.attack(u);assert.equal(m.hp,970);assert.equal(u.accentProgress,1);});
 test('唢呐不能秒 Boss，净化替代为最大生命 3%',()=>{const g=sandbox();g.useCard(give(g,'Suona'),{col:0,row:0});const u=g.units[0],boss=enemy(g,0,.8,1000,true);g.skill(u,true);assert.equal(boss.hp,970);const normal=enemy(g,0,.9,100);g.skill(u,true);assert.equal(normal.hp,0);assert.equal(g.kills,1);});
-test('重音与军鼓主动技能晕眩，不改变硬性截止',()=>{const g=sandbox(),u=g.place('snare',0,0),m=enemy(g,0,.5,10000);u.hits=99;g.attack(u);assert.equal(u.hits,0);assert.equal(m.stunUntil,1);const f=g.place('flute',1,0);g.skill(u,true);assert.equal(f.permSpeed,.1);});
+test('重音与军鼓主动技能晕眩，不改变宽限时长',()=>{const g=sandbox(),u=g.place('snare',0,0),m=enemy(g,0,.5,10000);u.accentProgress=99;g.attack(u);assert.equal(u.accentProgress,0);assert.equal(m.stunUntil,1);const f=g.place('flute',1,0);g.skill(u,true);assert.equal(f.permSpeed,.1);});
 test('安魂曲逐个按已损生命结算',()=>{const g=sandbox(),a=enemy(g,0,.3,100),b=enemy(g,1,.3,100);a.hp=50;b.hp=80;g.useCard(give(g,'Requiem'));assert.equal(a.hp,0);assert.equal(b.hp,60);});
 test('突强是额外 900%，整次多列攻击共 10 倍',()=>{const g=sandbox(),u=g.place('harp',0,0),a=enemy(g,0,.3,1000),b=enemy(g,1,.3,1000);g.useCard(give(g,'Sforzando'),u.id);g.attack(u);assert.equal(a.hp,880);assert.equal(b.hp,880);g.attack(u);assert.equal(a.hp,868);});
 test('无穷动仍按各列前排判定，三声部 Boss 三列全被挡时不能被越过攻击',()=>{const g=sandbox(),u=g.place('flute',0,0),boss=enemy(g,2,.1,1000,true);for(const lane of [1,2,3])enemy(g,lane,.8,1000);g.useCard(give(g,'Infinite'));assert.deepEqual(plain(g.lanes(u)),[0,1,2,3,4]);g.attack(u);assert.equal(boss.hp,1000);g.elapsed=5;assert.deepEqual(plain(g.lanes(u)),[0]);});
@@ -61,11 +61,11 @@ test('重试恢复起始点数与预购牌，不继承召唤、增益或对局�
 test('结算只奖励首次通关，失败不奖励，开下一关',()=>{const p=initialProgress(),l=DATA.levels[0];let a=settle(p,l,{win:true,points:150});assert.equal(a.reward,17);assert.equal(a.progress.unlocked,1);assert.equal(settle(a.progress,l,{win:true,points:1000}).reward,0);assert.equal(settle(p,l,{win:false,points:1000}).reward,0);});
 test('教学关手动按每列一把里拉琴布阵后可不用牌通关，提前清场补足时间收入',()=>{const g=new Game('1-1');assert.equal(g.units.length,0);assert.equal(g.points,90);for(let col=0;col<5;col++)assert.ok(g.place('lyra',col,2));assert.equal(g.points,0);g.start();g.advance(120);assert.equal(g.phase,'won');assert.ok(g.elapsed<120);assert.ok(Math.abs(g.elapsed+g.skippedTime-120)<1e-7);assert.equal(g.remainingTime,0);assert.equal(g.base,6);assert.equal(g.kills,42);});
 test('全流程：24 波基准用牌阵容均通关，早期允许少量漏怪，无资源透支',()=>{for(const l of DATA.levels){const g=playBaseline(l.id);assert.equal(g.phase,'won',`${l.id}: ${g.result?.reason}`);assert.ok(g.elapsed<120);assert.ok(Math.abs(g.elapsed+g.skippedTime-120)<1e-7);assert.equal(g.remainingTime,0);assert.ok(g.base>0,l.id);if(l.island>=3)assert.equal(g.stats.leaks,0,l.id);assert.ok(g.stats.minPoints>=-1e-7,l.id);assert.equal(g.kills+g.stats.normalLeaks,l.waves.reduce((n,w)=>n+w.count+1,0),l.id);}});
-test('第三岛起无牌基准均无法完成首波，控制不能延长截止',()=>{for(const id of ['3-1','4-1','5-1']){const g=playBaseline(id,false);assert.equal(g.phase,'lost');assert.equal(g.elapsed,g.level.waveDuration);}});
+test('第三岛起无牌基准在首波 Boss 触底时失败',()=>{for(const id of ['3-1','4-1','5-1']){const g=playBaseline(id,false);assert.equal(g.phase,'lost');assert.equal(g.elapsed,g.level.waveDuration);}});
 test('源码文档与配置的波次、价格和概率保持一致',()=>{const doc=fs.readFileSync(path.join(__dirname,'..','docs','核心数值设计.md'),'utf8');for(const c of DATA.cards){const name=c.id==='Prestissimo'?'Presstissimo':c.id;assert.ok(doc.includes(`| ${name} ${c.name} | ${c.summon?'—':c.cost} | ${c.rhythm} | ${c.weight}% | ${c.shopWeight}% |`),c.id);}for(const l of DATA.levels)l.waves.forEach((w,i)=>assert.ok(doc.includes(`| ${l.id} | ${i+1} | ${w.count-w.rushCount} | ${w.hp} | ${w.rushCount} | ${w.rushHp} | ${w.count} | ${w.bossHp} | ${w.count+1} | ${w.normalRewardBudget} |`)));});
 
 test('五岛中英文名称及对应首次开放类型与当前设计一致',()=>{assert.deepEqual(plain(DATA.islands.map(i=>[i.name,i.english])),[['风鸣岛','Windsong Island'],['星摇岛','Starrock Island'],['鼓岩岛','Drumrock Island'],['弦雾岛','Chordmist Island'],['天空岛','Sky Island']]);for(const u of DATA.units)assert.equal(u.unlock,u.summon?1:{plucked:1,wind:2,percussion:3,bowed:4}[u.family]);});
-test('三声部 Boss 首波生命高于可达无牌伤害的放宽上界',()=>{for(const l of DATA.levels.filter(l=>l.island>=3))assert.ok(l.waves[0].bossHp>firstWaveUpper(l),l.id);});
+test('首波 Boss 生命高于其前20秒的无牌伤害参考上界',()=>{for(const l of DATA.levels.filter(l=>l.island>=3))assert.ok(l.waves[0].bossHp>firstWaveUpper(l),l.id);});
 test('所有卡牌都存在可加载的本地美术，狂板文件名与资源一致',()=>{for(const c of DATA.cards)assert.ok(fs.existsSync(path.join(__dirname,'..',c.art)),c.id);assert.equal(CARDS.Prestissimo.art,'assets/cards/Prestissimo.png');});
 
 test('入场免费候选不随时间变化，也不自动发到手牌',()=>{const g=sandbox(),offers=plain(g.offers);assert.equal(g.hand.length,0);g.start();g.advance(24);assert.equal(g.offers.length,3);assert.deepEqual(plain(g.offers),offers);assert.equal(g.refreshCount,0);assert.equal(g.stats.refreshes,0);assert.equal(g.hand.length,0);});
@@ -129,7 +129,7 @@ test('空场生成间隙不结波，必须普通敌人全出且 Boss 出场后�
 test('提前清波当帧补发剩余秒数乘收入，不等待手动确认或扣局外韵律',()=>{const g=new Game('2-1');g.start();g.elapsed=45;g.tick=4500;g.points=10;g.batchIndex=g.schedule.length;g.bossSpawned=true;g.update(.01);assert.equal(g.phase,'running');assert.equal(g.wave,1);assert.equal(g.waveElapsed,0);assert.equal(g.points,32.5);assert.equal(g.skippedTime,14.99);assert.equal(g.stats.waveSettlements[0].bonus,22.485);assert.equal(g.remainingTime,60);g.update(.01);assert.equal(g.monsters.length,1);assert.equal(g.stats.waveSettlements.length,1);});
 test('自动换波保留真实状态，不把补发时间用于衰减效果或重复赠送候选',()=>{const g=sandbox('3-1'),u=g.place('flute',0,0);g.useCard(give(g,'Presto'),u.id);const until=u.buffs.Presto;g.rollOffers();const offers=plain(g.offers);u.progress=.4;u.permSpeed=.2;g.start();g.batchIndex=g.schedule.length;g.bossSpawned=true;g.update(.01);assert.equal(g.wave,1);assert.equal(g.units[0],u);assert.equal(u.progress,.4);assert.equal(u.permSpeed,.2);assert.equal(u.buffs.Presto,until);assert.ok(g.active(u,'Presto'));assert.deepEqual(plain(g.offers),offers);assert.equal(g.refreshCount,0);});
 test('末波清空立即结算且补发仅一次，韵律仍只在全关首次通关时发放',()=>{const g=new Game('1-1');g.start();g.elapsed=110;g.tick=11000;g.points=15;g.batchIndex=g.schedule.length;g.bossSpawned=true;g.update(.01);assert.equal(g.phase,'won');assert.equal(g.points,25);assert.equal(g.result.time,110.01);assert.equal(g.remainingTime,0);assert.equal(g.stats.waveSettlements.length,1);g.endWave();g.update(30);assert.equal(g.points,25);const first=settle(initialProgress(),g.level,g.result);assert.equal(first.reward,11);assert.equal(settle(first.progress,g.level,g.result).reward,0);});
-test('波截止有活怪或基地归零直接失败，不补发、不自动进入下一波',()=>{for(const dead of [false,true]){const g=new Game('2-1');g.start();g.elapsed=59.99;g.tick=5999;g.batchIndex=g.schedule.length;g.bossSpawned=true;if(dead)g.base=0;else {const m=g.spawn(0);m.freezeUntil=999;}const before=g.points;g.update(.01);assert.equal(g.phase,'lost');assert.equal(g.wave,0);assert.equal(g.stats.waveSettlements.length,0);assert.equal(g.points,+(before+.015).toFixed(3));}});
+test('宽限结束有活怪不会失败或跳波，基地归零仍立即失败',()=>{for(const dead of [false,true]){const g=new Game('2-1');g.start();g.elapsed=59.99;g.tick=5999;g.batchIndex=g.schedule.length;g.bossSpawned=true;if(dead)g.base=0;else {const m=g.spawn(0);m.freezeUntil=999;}const before=g.points;g.update(.01);assert.equal(g.phase,dead?'lost':'running');assert.equal(g.wave,0);assert.equal(g.stats.waveSettlements.length,0);assert.equal(g.points,+(before+.015).toFixed(3));assert.equal(g.overtime,true);}});
 
 
 test('资源不足的购买不会推进保底、随机流或消费点数',()=>{const a=new Game('3-1'),b=new Game('3-1');a.rollOffers();b.rollOffers();a.points=b.points=44.999;const before=plain(a.offers);assert.equal(a.claimOffer(0).ok,false);assert.deepEqual(plain(a.offers),before);assert.equal(a.guarantee,'Rondo');assert.equal(a.refreshCount,1);assert.equal(a.stats.cardSpent,0);a.points=b.points=100;a.rollOffers();b.rollOffers();assert.deepEqual(plain(a.offers),plain(b.offers));});
@@ -158,12 +158,73 @@ test('不同宽体乐器及二重奏分身各有独立攻击，不共用 Boss �
  g.useCard(give(g,'Duet'),a.id);const clone=g.units.find(u=>u.clone);g.attack(a);g.attack(b);g.attack(clone);
  assert.equal(boss.hp,970);assert.equal(a.attacks,1);assert.equal(b.attacks,1);assert.equal(clone.attacks,1);assert.equal(g.bullets.length,3);
 });
-test('马林巴对普通敌人保留七段及重音计数，对共享 Boss 只记一次命中',()=>{
+test('马林巴对 Boss 的合并伤害计一次，普通怪七段加回旋曲共计八次',()=>{
  const g=sandbox(),u=g.place('marimba',0,0),boss=g.spawn(2,true),normal=enemy(g,0,.5,1000);boss.hp=boss.maxHp=1000;
- g.useCard(give(g,'Rondo'));g.attack(u);assert.equal(boss.hp,970);assert.equal(normal.hp,952);assert.equal(u.hits,9);
+ g.useCard(give(g,'Rondo'));g.attack(u);assert.equal(boss.hp,970);assert.equal(normal.hp,952);assert.equal(u.accentProgress,9);
 });
 test('合并后的 Boss 攻击只发一次击杀奖励，护盾与易伤也只应用一次',()=>{
  const g=sandbox(),u=g.place('harp',1,0),boss=g.spawn(2,true);boss.hp=boss.maxHp=1000;boss.shield=10;boss.vulnerableUntil=10;
  g.useCard(give(g,'Rondo'));g.attack(u);assert.equal(boss.hp,992.5);assert.equal(boss.shield,0);
  boss.hp=1;const p=g.points;g.attack(u);assert.equal(g.kills,1);assert.equal(g.points,p+10);g.attack(u);assert.equal(g.kills,1);assert.equal(g.points,p+10);
+});
+
+
+test('沙锤重音只按普攻次数累计，不按目标、伤害段或回旋曲增加',()=>{
+ const g=sandbox(),u=g.place('shaker',0,0);for(let i=0;i<30;i++)enemy(g,i%5,.5,100000);g.useCard(give(g,'Rondo'));
+ g.attack(u);assert.equal(u.attacks,1);assert.equal(u.accentProgress,1);assert.ok(g.monsters.every(m=>m.stunUntil===0));
+});
+test('沙锤第100次普攻才触发重音，第101次重新从1计数',()=>{
+ const g=sandbox(),u=g.place('shaker',0,0),m=enemy(g,0,.5,100000);for(let i=0;i<99;i++)g.attack(u);
+ assert.equal(u.accentProgress,99);assert.equal(m.stunUntil,0);g.attack(u);assert.equal(u.accentProgress,0);assert.equal(m.stunUntil,1);g.elapsed=2;g.attack(u);assert.equal(u.accentProgress,1);assert.equal(m.stunUntil,1);
+});
+test('马林巴对单个高生命普通目标无附伤时七段各计一次，累计保留余数',()=>{
+ const g=sandbox(),u=g.place('marimba',0,0),m=enemy(g,0,.5,100000);let stuns=0;const stun=g.stun.bind(g);g.stun=()=>{stuns++;stun();};
+ for(let i=0;i<14;i++)g.attack(u);assert.equal(u.accentProgress,98);assert.equal(stuns,0);g.attack(u);assert.equal(u.accentProgress,5);assert.equal(stuns,1);
+ for(let i=0;i<14;i++)g.attack(u);assert.equal(u.attacks,29);assert.equal(u.accentProgress,3);assert.equal(stuns,2);
+});
+test('沙锤的伤害回调、额外伤害和无目标攻击不增长重音普攻进度',()=>{
+ const g=sandbox(),u=g.place('shaker',0,0);assert.equal(g.attack(u),false);assert.equal(u.attacks,0);assert.equal(u.accentProgress,0);
+ const m=enemy(g,0,.5,100000);for(let i=0;i<150;i++)g.damageMonster(m,1,{source:u});assert.equal(u.accentProgress,0);assert.equal(m.stunUntil,0);
+});
+test('重音进度跨波保留，暂停不增长，技能释放不清空或增加普攻进度',()=>{
+ const g=sandbox('4-1'),u=g.place('snare',0,0),m=enemy(g,0,.5,100000);u.accentProgress=99;g.skill(u,true);assert.equal(u.accentProgress,99);assert.equal(m.stunUntil,1);
+ g.start();g.pause();g.advance(10);assert.equal(u.accentProgress,99);g.monsters=[];g.bossSpawned=true;g.batchIndex=g.schedule.length;g.start();g.endWave();assert.equal(g.wave,1);assert.equal(u.accentProgress,99);
+ const next=enemy(g,0,.5,100000);g.attack(u);assert.equal(u.accentProgress,0);assert.equal(next.stunUntil,1);g.reset();assert.equal(g.units.length,0);const fresh=g.place('snare',0,0);assert.equal(fresh.accentProgress,0);
+});
+test('二重奏的打击乐分身不增长或触发重音，也不替原乐器累计',()=>{
+ const g=sandbox(),u=g.place('marimba',0,0),m=enemy(g,0,.5,100000);u.accentProgress=98;g.useCard(give(g,'Duet'),u.id);const clone=g.units.find(x=>x.clone);
+ for(let i=0;i<100;i++)g.attack(clone);assert.equal(clone.accentProgress,0);assert.equal(u.accentProgress,98);assert.equal(m.stunUntil,0);
+ g.attack(u);assert.equal(u.accentProgress,5);assert.equal(m.stunUntil,1);
+});
+
+
+test('马林巴每次有效伤害算一次普攻：多目标七段及附伤独立累计',()=>{
+ const g=sandbox(),u=g.place('marimba',0,0);for(let i=0;i<30;i++)enemy(g,i%5,.5,100000);g.useCard(give(g,'Rondo'));
+ let stuns=0;const stun=g.stun.bind(g);g.stun=()=>{stuns++;stun();};g.attack(u);assert.equal(u.attacks,1);assert.equal(stuns,2);assert.equal(u.accentProgress,40);
+});
+test('马林巴无效伤害不计数，击杀后空段不计，护盾吸收仍计有效伤害',()=>{
+ const g=sandbox(),u=g.place('marimba',0,0),m=enemy(g,0,.5,1);g.attack(u);assert.equal(u.accentProgress,1);
+ g.damageMonster(m,100,{source:u});assert.equal(u.accentProgress,1);const shielded=enemy(g,1,.5,1000);shielded.shield=1000;
+ g.damageMonster(shielded,0,{source:u});assert.equal(u.accentProgress,1);g.attack(u);assert.equal(shielded.shield,972);assert.equal(u.accentProgress,8);
+});
+function overtimeSetup(level='2-1',elapsed=59.99){const g=new Game(level);g.elapsed=elapsed;g.tick=Math.round(elapsed*100);g.batchIndex=g.schedule.length;g.bossSpawned=true;g.start();return g;}
+test('超时战斗、时间收入与效果继续推进，当前波不结束也不消耗下一波宽限',()=>{
+ const g=overtimeSetup(),m=enemy(g,0,.5,1000);m.freezeUntil=999;const points=g.points;g.advance(1.01);
+ assert.equal(g.phase,'running');assert.equal(g.elapsed,61);assert.equal(g.wave,0);assert.equal(g.waveRemaining,0);assert.equal(g.remainingTime,60);assert.equal(g.points,points+1.515);assert.equal(g.result,null);
+ const t=g.elapsed,p=g.points;g.pause();g.advance(10);assert.equal(g.elapsed,t);assert.equal(g.points,p);assert.equal(g.overtime,true);
+});
+test('超时后一只普通怪触底即败，不使用剩余九点耐久继续战斗且不发漏怪奖励',()=>{
+ const g=overtimeSetup('2-1',60.5),m=enemy(g,0,.99999,1000),p=g.points;g.update(.01);
+ assert.equal(g.phase,'lost');assert.equal(g.base,0);assert.equal(g.stats.normalLeaks,1);assert.equal(g.kills,0);assert.equal(g.points,+(p+.015).toFixed(3));assert.equal(g.stats.waveSettlements.length,0);assert.equal(g.result.reason,'超时后敌人触底');
+});
+test('宽限边界以前漏怪只扣一点，到达宽限时刻触底立即失败',()=>{
+ for(const [elapsed,fail] of [[59.98,false],[59.99,true]]){const g=overtimeSetup('2-1',elapsed);enemy(g,0,.99999,1000);const alive=enemy(g,1,.1,1000);alive.freezeUntil=999;g.update(.01);assert.equal(g.phase,fail?'lost':'running');assert.equal(g.base,fail?0:9);assert.equal(g.wave,0);}
+});
+test('超时清场正常接波，补发为零，新一波重新获得完整宽限',()=>{
+ const g=overtimeSetup('2-1',65),m=enemy(g,0,.5,1);g.damageMonster(m,1);const p=g.points;g.update(.01);
+ assert.equal(g.phase,'running');assert.equal(g.wave,1);assert.equal(g.waveElapsed,0);assert.equal(g.waveRemaining,60);assert.equal(g.remainingTime,60);assert.equal(g.overtime,false);assert.equal(g.points,+(p+.015).toFixed(3));assert.equal(g.stats.waveSettlements[0].bonus,0);assert.equal(g.stats.waveSettlements[0].overtimeSeconds,5.01);
+});
+test('末波可在标准时间以后清场胜利，超时中单位仍攻击且增益正常到期',()=>{
+ const g=overtimeSetup('1-1',121),u=g.place('lyra',0,0),m=enemy(g,0,.5,10);g.useCard(give(g,'Presto'),u.id);u.buffs.Presto=g.elapsed+.1;g.advance(1);
+ assert.equal(g.phase,'won');assert.ok(g.elapsed>120);assert.equal(g.remainingTime,0);assert.ok(g.stats.waveSettlements[0].overtimeSeconds>1);assert.equal(g.stats.waveSettlements[0].bonus,0);assert.equal(g.active(u,'Presto'),false);
 });
