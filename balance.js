@@ -32,7 +32,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "贯穿所在列的全部敌人。每 10 次普攻使该列敌人受到伤害提高 25%，持续 10 秒。"
+      "description": "贯穿所在列的全部敌人。每 10 次普攻使该列敌人受到伤害提高 25%，持续 10 秒。",
+      "portrait": "lyra"
     },
     {
       "id": "harp",
@@ -59,7 +60,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "贯穿横向两列的全部敌人。每次普攻永久增加 1% 攻速，本关最多增加 100%。"
+      "description": "贯穿横向两列的全部敌人。每次普攻永久增加 1% 攻速，本关最多增加 100%。",
+      "portrait": "harp"
     },
     {
       "id": "guqin",
@@ -90,7 +92,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "贯穿横向三列，并施加 10 秒印记；到期追加期间生命伤害的 30%。召唤后持续至本波结束。"
+      "description": "贯穿横向三列，并施加 10 秒印记；到期追加期间生命伤害的 30%。召唤后持续至本波结束。",
+      "portrait": "guqin"
     },
     {
       "id": "flute",
@@ -113,7 +116,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "攻击所在列最前排敌人。每件真实吹奏乐器提供 25% 协奏增伤；双簧管在场再增加 25%。"
+      "description": "攻击所在列最前排敌人。每件真实吹奏乐器提供 25% 协奏增伤；双簧管在场再增加 25%。",
+      "portrait": "flute"
     },
     {
       "id": "oboe",
@@ -136,7 +140,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "攻击所在列最前排敌人。每件真实吹奏乐器提供 25% 协奏增伤；长笛在场再增加 25%。"
+      "description": "攻击所在列最前排敌人。每件真实吹奏乐器提供 25% 协奏增伤；长笛在场再增加 25%。",
+      "portrait": "oboe"
     },
     {
       "id": "trumpet",
@@ -159,7 +164,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "攻击所在列最前排敌人，享受吹奏协奏。上低音号在场时额外增加 150% 伤害，最终攻速减半。"
+      "description": "攻击所在列最前排敌人，享受吹奏协奏。上低音号在场时额外增加 150% 伤害，最终攻速减半。",
+      "portrait": "trumpet"
     },
     {
       "id": "euphonium",
@@ -194,7 +200,8 @@ global.ConcertoData = {
           1
         ]
       ],
-      "description": "占据 2×2 格，每次对横向两列各攻击一个前排敌人，享受吹奏协奏，并强化场上的小号。"
+      "description": "占据 2×2 格，每次对横向两列各攻击一个前排敌人，享受吹奏协奏，并强化场上的小号。",
+      "portrait": "euphonium"
     },
     {
       "id": "suona",
@@ -217,7 +224,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "享受吹奏协奏，无基础伤害。每 5 次普攻净化一个前排普通敌人；对 Boss 改为造成最大生命 3% 伤害。持续至本关结束。"
+      "description": "享受吹奏协奏，无基础伤害。每 5 次普攻净化一个前排普通敌人；对 Boss 改为造成最大生命 3% 伤害。持续至本关结束。",
+      "portrait": "suona"
     },
     {
       "id": "snare",
@@ -240,7 +248,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "普攻打击全场敌人。每 5 次普攻使随机一件非打击乐器永久增加 10% 攻速；累计 100 次伤害或释放技能使全场晕眩 1 秒。"
+      "description": "普攻打击全场敌人。每 5 次普攻使随机一件非打击乐器永久增加 10% 攻速；累计 100 次伤害或释放技能使全场晕眩 1 秒。",
+      "portrait": "snare"
     },
     {
       "id": "shaker",
@@ -263,7 +272,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "以每秒 5 次的频率打击全场敌人。累计 100 次伤害触发重音，使全场晕眩 1 秒。"
+      "description": "以每秒 5 次的频率打击全场敌人。累计 100 次伤害触发重音，使全场晕眩 1 秒。",
+      "portrait": "shaker"
     },
     {
       "id": "marimba",
@@ -302,7 +312,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "横占一整行，普攻对全场每个敌人连续造成 7 段、合计 28 点伤害。每段计入重音，累计 100 次使全场晕眩 1 秒。"
+      "description": "横占一整行，普攻对全场每个敌人连续造成 7 段、合计 28 点伤害。每段计入重音，累计 100 次使全场晕眩 1 秒。",
+      "portrait": "marimba"
     },
     {
       "id": "gong",
@@ -325,7 +336,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "每次普攻打击全场敌人，并释放技能使全场晕眩 1 秒。召唤后持续至本波结束。"
+      "description": "每次普攻打击全场敌人，并释放技能使全场晕眩 1 秒。召唤后持续至本波结束。",
+      "portrait": "gong"
     },
     {
       "id": "violin",
@@ -348,7 +360,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "在所在列前排敌人周围形成路径长度 1/3 的区域，伤害区域内敌人并减速 15%。每列只能由一件常驻拉弦乐器覆盖。"
+      "description": "在所在列前排敌人周围形成路径长度 1/3 的区域，伤害区域内敌人并减速 15%。每列只能由一件常驻拉弦乐器覆盖。",
+      "portrait": "violin"
     },
     {
       "id": "viola",
@@ -375,7 +388,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "横向覆盖两列，各自在前排周围形成路径长度 1/3 的区域，伤害并减速 25%。覆盖列不能与其他常驻拉弦重叠。"
+      "description": "横向覆盖两列，各自在前排周围形成路径长度 1/3 的区域，伤害并减速 25%。覆盖列不能与其他常驻拉弦重叠。",
+      "portrait": "viola"
     },
     {
       "id": "cello",
@@ -406,7 +420,8 @@ global.ConcertoData = {
           0
         ]
       ],
-      "description": "横向覆盖三列，各自在前排周围形成路径长度 1/3 的区域，伤害并减速 40%。覆盖列不能与其他常驻拉弦重叠。"
+      "description": "横向覆盖三列，各自在前排周围形成路径长度 1/3 的区域，伤害并减速 40%。覆盖列不能与其他常驻拉弦重叠。",
+      "portrait": "cello"
     }
   ],
   "cards": [
@@ -666,12 +681,18 @@ global.ConcertoData = {
       "waves": [
         {
           "count": 45,
-          "hp": 30,
-          "bossHp": 180,
+          "hp": 120,
+          "bossHp": 171,
           "bossLane": 2,
-          "normalRewardBudget": 20
+          "normalRewardBudget": 20,
+          "travelTime": 28,
+          "rushCount": 4,
+          "rushHp": 185,
+          "rushTravelTime": 10
         }
-      ]
+      ],
+      "bossName": "风鸣之鹿",
+      "bossPortrait": "1-1"
     },
     {
       "id": "2-1",
@@ -687,19 +708,29 @@ global.ConcertoData = {
       "waves": [
         {
           "count": 48,
-          "hp": 30.0,
-          "bossHp": 900,
+          "hp": 150,
+          "bossHp": 855,
           "bossLane": 2,
-          "normalRewardBudget": 32
+          "normalRewardBudget": 32,
+          "travelTime": 28,
+          "rushCount": 5,
+          "rushHp": 180,
+          "rushTravelTime": 10
         },
         {
           "count": 54,
-          "hp": 36.667,
-          "bossHp": 1100,
-          "bossLane": 0,
-          "normalRewardBudget": 36
+          "hp": 170,
+          "bossHp": 1045,
+          "bossLane": 1,
+          "normalRewardBudget": 36,
+          "travelTime": 28,
+          "rushCount": 5,
+          "rushHp": 205,
+          "rushTravelTime": 10
         }
-      ]
+      ],
+      "bossName": "星尘夜蛾",
+      "bossPortrait": "2-1"
     },
     {
       "id": "2-2",
@@ -715,19 +746,29 @@ global.ConcertoData = {
       "waves": [
         {
           "count": 60,
-          "hp": 43.333,
-          "bossHp": 1250,
+          "hp": 190,
+          "bossHp": 1188,
           "bossLane": 2,
-          "normalRewardBudget": 40
+          "normalRewardBudget": 40,
+          "travelTime": 28,
+          "rushCount": 6,
+          "rushHp": 230,
+          "rushTravelTime": 10
         },
         {
           "count": 66,
-          "hp": 50.0,
-          "bossHp": 1350,
-          "bossLane": 0,
-          "normalRewardBudget": 44
+          "hp": 210,
+          "bossHp": 1283,
+          "bossLane": 1,
+          "normalRewardBudget": 44,
+          "travelTime": 28,
+          "rushCount": 7,
+          "rushHp": 250,
+          "rushTravelTime": 10
         }
-      ]
+      ],
+      "bossName": "流星鸮",
+      "bossPortrait": "2-2"
     },
     {
       "id": "3-1",
@@ -743,19 +784,29 @@ global.ConcertoData = {
       "waves": [
         {
           "count": 78,
-          "hp": 80.0,
-          "bossHp": 27000,
+          "hp": 360,
+          "bossHp": 25650,
           "bossLane": 2,
-          "normalRewardBudget": 52
+          "normalRewardBudget": 52,
+          "travelTime": 28,
+          "rushCount": 8,
+          "rushHp": 486,
+          "rushTravelTime": 12
         },
         {
           "count": 90,
-          "hp": 90.0,
-          "bossHp": 27500,
-          "bossLane": 0,
-          "normalRewardBudget": 60
+          "hp": 400,
+          "bossHp": 26125,
+          "bossLane": 1,
+          "normalRewardBudget": 60,
+          "travelTime": 28,
+          "rushCount": 9,
+          "rushHp": 540,
+          "rushTravelTime": 12
         }
-      ]
+      ],
+      "bossName": "鼓岩巨龟",
+      "bossPortrait": "3-1"
     },
     {
       "id": "3-2",
@@ -771,19 +822,29 @@ global.ConcertoData = {
       "waves": [
         {
           "count": 96,
-          "hp": 100.0,
-          "bossHp": 28000,
+          "hp": 440,
+          "bossHp": 26600,
           "bossLane": 2,
-          "normalRewardBudget": 64
+          "normalRewardBudget": 64,
+          "travelTime": 28,
+          "rushCount": 10,
+          "rushHp": 594,
+          "rushTravelTime": 12
         },
         {
           "count": 108,
-          "hp": 110.0,
-          "bossHp": 28500,
-          "bossLane": 0,
-          "normalRewardBudget": 72
+          "hp": 480,
+          "bossHp": 27075,
+          "bossLane": 1,
+          "normalRewardBudget": 72,
+          "travelTime": 28,
+          "rushCount": 11,
+          "rushHp": 648,
+          "rushTravelTime": 12
         }
-      ]
+      ],
+      "bossName": "铜角犀",
+      "bossPortrait": "3-2"
     },
     {
       "id": "4-1",
@@ -799,26 +860,40 @@ global.ConcertoData = {
       "waves": [
         {
           "count": 120,
-          "hp": 130.0,
-          "bossHp": 50000,
+          "hp": 300,
+          "bossHp": 47500,
           "bossLane": 2,
-          "normalRewardBudget": 80
+          "normalRewardBudget": 80,
+          "travelTime": 28,
+          "rushCount": 12,
+          "rushHp": 405,
+          "rushTravelTime": 12
         },
         {
           "count": 132,
-          "hp": 140.0,
-          "bossHp": 50500,
-          "bossLane": 0,
-          "normalRewardBudget": 88
+          "hp": 320,
+          "bossHp": 47975,
+          "bossLane": 1,
+          "normalRewardBudget": 88,
+          "travelTime": 28,
+          "rushCount": 13,
+          "rushHp": 432,
+          "rushTravelTime": 12
         },
         {
           "count": 144,
-          "hp": 150.0,
-          "bossHp": 51000,
-          "bossLane": 4,
-          "normalRewardBudget": 96
+          "hp": 340,
+          "bossHp": 48450,
+          "bossLane": 3,
+          "normalRewardBudget": 96,
+          "travelTime": 28,
+          "rushCount": 14,
+          "rushHp": 459,
+          "rushTravelTime": 12
         }
-      ]
+      ],
+      "bossName": "弦雾水母",
+      "bossPortrait": "4-1"
     },
     {
       "id": "4-2",
@@ -834,26 +909,40 @@ global.ConcertoData = {
       "waves": [
         {
           "count": 150,
-          "hp": 160.0,
-          "bossHp": 51500,
+          "hp": 360,
+          "bossHp": 48925,
           "bossLane": 2,
-          "normalRewardBudget": 100
+          "normalRewardBudget": 100,
+          "travelTime": 28,
+          "rushCount": 15,
+          "rushHp": 486,
+          "rushTravelTime": 12
         },
         {
           "count": 162,
-          "hp": 170.0,
-          "bossHp": 52000,
-          "bossLane": 0,
-          "normalRewardBudget": 108
+          "hp": 380,
+          "bossHp": 49400,
+          "bossLane": 1,
+          "normalRewardBudget": 108,
+          "travelTime": 28,
+          "rushCount": 16,
+          "rushHp": 513,
+          "rushTravelTime": 12
         },
         {
           "count": 174,
-          "hp": 180.0,
-          "bossHp": 52500,
-          "bossLane": 4,
-          "normalRewardBudget": 116
+          "hp": 400,
+          "bossHp": 49875,
+          "bossLane": 3,
+          "normalRewardBudget": 116,
+          "travelTime": 28,
+          "rushCount": 17,
+          "rushHp": 540,
+          "rushTravelTime": 12
         }
-      ]
+      ],
+      "bossName": "织弦蛛",
+      "bossPortrait": "4-2"
     },
     {
       "id": "5-1",
@@ -869,26 +958,40 @@ global.ConcertoData = {
       "waves": [
         {
           "count": 180,
-          "hp": 186.667,
-          "bossHp": 64000,
+          "hp": 420,
+          "bossHp": 60800,
           "bossLane": 2,
-          "normalRewardBudget": 120
+          "normalRewardBudget": 120,
+          "travelTime": 28,
+          "rushCount": 18,
+          "rushHp": 567,
+          "rushTravelTime": 12
         },
         {
           "count": 192,
-          "hp": 193.333,
-          "bossHp": 64500,
-          "bossLane": 0,
-          "normalRewardBudget": 128
+          "hp": 440,
+          "bossHp": 61275,
+          "bossLane": 1,
+          "normalRewardBudget": 128,
+          "travelTime": 28,
+          "rushCount": 19,
+          "rushHp": 594,
+          "rushTravelTime": 12
         },
         {
           "count": 204,
-          "hp": 200.0,
-          "bossHp": 65000,
-          "bossLane": 4,
-          "normalRewardBudget": 136
+          "hp": 460,
+          "bossHp": 61750,
+          "bossLane": 3,
+          "normalRewardBudget": 136,
+          "travelTime": 28,
+          "rushCount": 20,
+          "rushHp": 621,
+          "rushTravelTime": 12
         }
-      ]
+      ],
+      "bossName": "云海鲸",
+      "bossPortrait": "5-1"
     },
     {
       "id": "5-2",
@@ -904,26 +1007,40 @@ global.ConcertoData = {
       "waves": [
         {
           "count": 216,
-          "hp": 206.667,
-          "bossHp": 65500,
+          "hp": 480,
+          "bossHp": 62225,
           "bossLane": 2,
-          "normalRewardBudget": 144
+          "normalRewardBudget": 144,
+          "travelTime": 28,
+          "rushCount": 22,
+          "rushHp": 648,
+          "rushTravelTime": 12
         },
         {
           "count": 228,
-          "hp": 213.333,
-          "bossHp": 66000,
-          "bossLane": 0,
-          "normalRewardBudget": 152
+          "hp": 500,
+          "bossHp": 62700,
+          "bossLane": 1,
+          "normalRewardBudget": 152,
+          "travelTime": 28,
+          "rushCount": 23,
+          "rushHp": 675,
+          "rushTravelTime": 12
         },
         {
           "count": 240,
-          "hp": 220.0,
-          "bossHp": 66500,
-          "bossLane": 4,
-          "normalRewardBudget": 160
+          "hp": 520,
+          "bossHp": 63175,
+          "bossLane": 3,
+          "normalRewardBudget": 160,
+          "travelTime": 28,
+          "rushCount": 24,
+          "rushHp": 702,
+          "rushTravelTime": 12
         }
-      ]
+      ],
+      "bossName": "星冠龙",
+      "bossPortrait": "5-2"
     },
     {
       "id": "5-3",
@@ -939,26 +1056,40 @@ global.ConcertoData = {
       "waves": [
         {
           "count": 252,
-          "hp": 226.667,
-          "bossHp": 67000,
+          "hp": 530,
+          "bossHp": 63650,
           "bossLane": 2,
-          "normalRewardBudget": 168
+          "normalRewardBudget": 168,
+          "travelTime": 28,
+          "rushCount": 25,
+          "rushHp": 716,
+          "rushTravelTime": 12
         },
         {
           "count": 264,
-          "hp": 233.333,
-          "bossHp": 67500,
-          "bossLane": 0,
-          "normalRewardBudget": 176
+          "hp": 540,
+          "bossHp": 64125,
+          "bossLane": 1,
+          "normalRewardBudget": 176,
+          "travelTime": 28,
+          "rushCount": 26,
+          "rushHp": 729,
+          "rushTravelTime": 12
         },
         {
           "count": 276,
-          "hp": 240.0,
-          "bossHp": 68000,
-          "bossLane": 4,
-          "normalRewardBudget": 184
+          "hp": 550,
+          "bossHp": 64600,
+          "bossLane": 3,
+          "normalRewardBudget": 184,
+          "travelTime": 28,
+          "rushCount": 28,
+          "rushHp": 743,
+          "rushTravelTime": 12
         }
-      ]
+      ],
+      "bossName": "终章天琴",
+      "bossPortrait": "5-3"
     }
   ],
   "islands": [
@@ -992,6 +1123,7 @@ global.ConcertoData = {
       "symbol": "bells",
       "newFamily": "全乐器"
     }
-  ]
+  ],
+  "bossWidth": 3
 };
 })(typeof window!=='undefined'?window:globalThis);

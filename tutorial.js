@@ -12,8 +12,8 @@ const STEPS = {
  use: {part:4,title:'把急板交给乐器',text:'将手牌「急板」拖到任意里拉琴：花费 12 协奏点，攻速提高 25%，持续 5 秒。也可点牌后点乐器。'},
  save: {part:5,title:'为刷新攒一点协奏',text:'候选不会定时更换。继续演奏，攒够 6 协奏点后尝试手动刷新。'},
  refresh: {part:5,title:'亲手刷新一次',text:'点击「刷新 · 6 协奏」，更换整组三张候选。入场首组免费，之后整组刷新都要付费。'},
- play: {part:6,title:'自由演奏，准备迎战',text:'现在可以自由领取和使用奏法牌。剩余 20 秒时，Boss 会从第 3 列出现；记得留意协奏点。'},
- boss: {part:6,title:'Boss 来了',text:'最后 20 秒内击败 Boss。它漏过会扣除 10 点耐久；控制也不能延长波次截止。'},
+ play: {part:6,title:'自由演奏，准备迎战',text:'突进怪跑得快，可用奏法牌支援薄弱声部。剩余 20 秒时，Boss 会横跨第 2–4 列。'},
+ boss: {part:6,title:'Boss 来了',text:'第 2–4 列可共同攻击这个 Boss，生命共享。最后 20 秒内击败它；漏过扣 10 耐久，控制不延长截止。'},
  finish: {part:6,title:'完成最后一段演奏',text:'守住基地直到计时结束。你已学会布阵、调整、奏法和刷新；通关后前往星摇岛。'}
 };
 class TutorialGuide {
@@ -67,9 +67,9 @@ class TutorialGuide {
   if(this.step==='place')return ['.instrument-option[aria-label^="里拉琴"]',cell(0,2)];
   if(this.step==='move')return [cell(0,1),cell(0,2)];
   if(this.step==='remove')return ['#sell-unit'];
-  if(this.step==='formation'){const col=[0,1,2,3,4].find(col=>!this.game.units.some(u=>u.col===col));return [cell(col??0,2),'.instrument-option[aria-label^="里拉琴"]'];}
+  if(this.step==='formation'){const cols=[0,1,2,3,4].filter(col=>!this.game.units.some(u=>u.col===col));return ['.instrument-option[aria-label^="里拉琴"]',...cols.map(col=>cell(col,2))];}
   if(this.step==='start')return ['#start-game'];
-  if(this.step==='earn'||this.step==='save')return ['.wallet'];
+  if(this.step==='earn'||this.step==='save')return ['.wallet','#start-game'];
   if(this.step==='claim')return ['#draw-cards .play-card[aria-label^="急板"]'];
   if(this.step==='use')return ['#hand-cards .play-card[aria-label^="急板"]',...this.game.units.filter(u=>!u.clone).map(u=>cell(u.col,u.row))];
   if(this.step==='refresh')return ['#draw-refresh'];
