@@ -11,7 +11,7 @@ function initialProgress(){return {version:2,rhythm:0,unlocked:0,cleared:[],shop
 function settle(progress,level,result){const next=copy(progress);let reward=0;if(result.win&&!next.cleared.includes(level.id)){reward=level.reward+Math.floor((result.points+1e-7)/20);next.rhythm+=reward;next.cleared.push(level.id);next.unlocked=Math.min(9,Math.max(next.unlocked,level.index+1));}if(result.win)delete next.shops[level.id];return {progress:next,reward};}
 class Game {
  constructor(level='1-1',options={}){this.level=copy(typeof level==='string'?D.levels.find(l=>l.id===level):level);if(!this.level)throw new Error('未知关卡');this.seed=options.seed??(771+this.level.index*101);this.tutorialEnabled=!!options.tutorial&&this.level.id==='1-1';this.prepaid=(options.prepaid||[]).filter(id=>CARDS[id]).slice(0,3);this.reset();}
- reset(){this.random=seeded(this.seed);this.areaRandom=seeded(this.seed+104729);this.seq=0;this.phase='ready';this.elapsed=0;this.tick=0;this.buffer=0;this.wave=0;this.waveStart=0;this.skippedTime=0;this.points=this.level.initial;this.base=10;this.kills=0;this.units=[];this.monsters=[];this.areas=[];this.bullets=[];this.effects=[];this.pulses=[];this.offers=[];this.guarantee=null;this.freeRefresh=0;this.hand=[];this.pendingCards=[];this.result=null;this.arranging=false;this.dimUntil=0;this.config={duration:120,pointsPerSecond:this.level.income};this.stats={spent:0,refreshes:0,refreshSpent:0,cardSpent:0,cardPurchases:[],leaks:0,normalLeaks:0,rushLeaks:0,cardUses:[],bossTimes:[],minPoints:this.points,waveSettlements:[]};this.giveCards(this.prepaid);this.prepareWave();this.offers=Array.from({length:3},(_,i)=>this.card(this.tutorialEnabled?['Presto','Forte','Diminuendo'][i]:weighted('weight',this.random)));this.guide?.reset();}
+ reset(){this.random=seeded(this.seed);this.areaRandom=seeded(this.seed+104729);this.seq=0;this.phase='ready';this.elapsed=0;this.tick=0;this.buffer=0;this.wave=0;this.waveStart=0;this.skippedTime=0;this.points=this.level.initial;this.base=10;this.kills=0;this.units=[];this.monsters=[];this.areas=[];this.bullets=[];this.effects=[];this.pulses=[];this.offers=[];this.guarantee=null;this.freeRefresh=0;this.hand=[];this.pendingCards=[];this.result=null;this.arranging=false;this.dimUntil=0;this.config={duration:120,pointsPerSecond:this.level.income};this.stats={spent:0,refreshes:0,refreshSpent:0,cardSpent:0,cardPurchases:[],leaks:0,normalLeaks:0,rushLeaks:0,cardUses:[],bossTimes:[],minPoints:this.points,waveSettlements:[]};this.giveCards(this.prepaid);this.prepareWave();this.offers=Array.from({length:3},(_,i)=>this.card(this.tutorialEnabled?['Presto','Forte','Diminuendo'][i]:this.randomCardType()));this.guide?.reset();}
  guideBlocks(action,data={}){return !!(this.guide?.active&&!this.guide.allows(action,data));}
  get waveElapsed(){return this.elapsed-this.waveStart;}
  get waveRemaining(){return Math.max(0,Math.round((this.level.waveDuration-this.waveElapsed)*100)/100);}
@@ -42,20 +42,22 @@ class Game {
  windFactor(u){if(u.profile.family!=='wind')return 1;if(u.clone)return u.windSnapshot;let bonus=0;const has=id=>this.units.some(x=>!x.clone&&x.profile.id===id);if(u.profile.id==='flute'&&has('oboe')||u.profile.id==='oboe'&&has('flute'))bonus=.25;if(u.profile.id==='trumpet'&&has('euphonium'))bonus=1.5;return 1+.25*this.windCount()+bonus;}
  attackSpeed(u){const temp=(this.active(u,'Presto')?.25:0)+(this.active(u,'Prestissimo')?1:0)+(this.active(u,'Cadenza')?.5:0);const penalty=u.profile.id==='trumpet'&&(u.clone?u.trumpetSnapshot:this.units.some(x=>!x.clone&&x.profile.id==='euphonium'))?.5:1;return u.profile.attackSpeed*(1+Math.min(1,u.permSpeed))*(1+temp)*penalty;}
  directDamage(u){return u.profile.damage*this.windFactor(u)*(this.active(u,'Forte')?1.5:1)*(u.clone?.5:1);}
+ // Independent sampling with replacement: cards have no finite stock.
+ randomCardType(){return weighted('weight',this.random);}
  card(type){return {id:++this.seq,type};}
  giveCards(types){const incoming=types.map(type=>this.card(type));if(this.hand.length+incoming.length>8)this.pendingCards.push(...incoming);else this.hand.push(...incoming);}
  resolveOverflow(keep){const all=[...this.hand,...this.pendingCards];if(keep.length>8||new Set(keep).size!==keep.length||keep.some(id=>!all.some(c=>c.id===id)))return fail('最多保留 8 张牌');this.hand=all.filter(c=>keep.includes(c.id));this.pendingCards=[];return ok();}
  discard(id){if(this.guideBlocks('discard'))return false;const before=this.hand.length;this.hand=this.hand.filter(c=>c.id!==id);return before!==this.hand.length;}
  pity(refreshNumber){if(this.level.island>=3){if(refreshNumber===1)return 'Rondo';if(refreshNumber===2)return 'Cadenza';if(refreshNumber===3)return 'Forte';if(refreshNumber===4)return 'Infinite';}if(this.level.island===5&&refreshNumber===5)return 'Rondo';return null;}
- rollOffers(){if(this.guideBlocks('refresh'))return fail(this.guide.hint);if(['won','lost'].includes(this.phase)||this.arranging||this.pendingCards.length)return fail('当前不能刷新');if(this.freeRefresh)this.freeRefresh--;else if(this.points+1e-7>=D.refreshCost){this.points=Math.round((this.points-D.refreshCost)*1000)/1000;this.stats.spent+=D.refreshCost;this.stats.refreshSpent+=D.refreshCost;}else return fail(`刷新需要 ${D.refreshCost} 协奏点`);this.refreshCount++;this.stats.refreshes++;this.guarantee=this.pity(this.refreshCount);this.offers=Array.from({length:3},()=>this.card(weighted('weight',this.random)));if(this.guarantee)this.offers[0]=this.card(this.guarantee);return ok();}
+ rollOffers(){if(this.guideBlocks('refresh'))return fail(this.guide.hint);if(['won','lost'].includes(this.phase)||this.arranging||this.pendingCards.length)return fail('当前不能刷新');if(this.freeRefresh)this.freeRefresh--;else if(this.points+1e-7>=D.refreshCost){this.points=Math.round((this.points-D.refreshCost)*1000)/1000;this.stats.spent+=D.refreshCost;this.stats.refreshSpent+=D.refreshCost;}else return fail(`刷新需要 ${D.refreshCost} 协奏点`);this.refreshCount++;this.stats.refreshes++;this.guarantee=this.pity(this.refreshCount);this.offers=Array.from({length:3},()=>this.card(this.randomCardType()));if(this.guarantee)this.offers[0]=this.card(this.guarantee);return ok();}
  claimOffer(index){
   if(this.guideBlocks('claim',{index}))return fail(this.guide.hint);
   if(['won','lost'].includes(this.phase)||this.arranging)return fail('当前不能购买');
   if(this.pendingCards.length)return fail('先整理手牌');
-  const c=this.offers[index];if(!c)return fail('本次抽选已结束');const cost=CARDS[c.type].cost;
+  const c=Number.isInteger(index)&&index>=0&&index<3?this.offers[index]:null;if(!c)return fail('请选择有效的候选位置');const cost=CARDS[c.type].cost;
   if(this.points+1e-7<cost)return fail(`购买需要 ${cost} 协奏点`);
   this.points=Math.round((this.points-cost)*1000)/1000;this.stats.spent+=cost;this.stats.cardSpent+=cost;this.stats.cardPurchases.push({type:c.type,cost,at:this.elapsed});this.stats.minPoints=Math.min(this.stats.minPoints,this.points);
-  this.giveCards([c.type]);this.offers[index]=this.card(weighted('weight',this.random));if(index===0)this.guarantee=null;return ok('已购买，使用免费');
+  this.giveCards([c.type]);this.offers[index]=this.card(this.randomCardType());if(index===0)this.guarantee=null;return ok('已购买，使用免费');
  }
  beginArrangement(card){if(this.arranging)return fail('请先完成重排');this.arranging=true;this.arrangeCard=card.id;this.arrangeBackup=this.units.map(u=>({id:u.id,col:u.col,row:u.row}));return ok('移动乐器后确认重排',{arrange:true});}
  endArrangement(commit){if(!this.arranging)return fail('没有进行中的重排');if(commit){const c=this.hand.find(c=>c.id===this.arrangeCard);if(!c)return fail('卡牌已不在手中');this.hand=this.hand.filter(x=>x.id!==c.id);this.stats.cardUses.push({type:c.type,at:this.elapsed});}else for(const p of this.arrangeBackup){const u=this.units.find(u=>u.id===p.id);if(u)Object.assign(u,{col:p.col,row:p.row});}this.arranging=false;this.arrangeBackup=null;return ok(commit?'重排完成':'已取消');}
@@ -70,7 +72,7 @@ class Game {
  if(c.id==='Diminuendo')this.dimUntil=this.elapsed+5;
  if(c.id==='Fermata')for(const m of this.monsters)m.freezeUntil=this.elapsed+3;
  if(c.id==='Requiem')for(const m of [...this.monsters])this.damageMonster(m,m.maxHp-m.hp,{});
- if(c.id==='Improvisation')this.giveCards([weighted('weight',this.random),weighted('weight',this.random)]);
+ if(c.id==='Improvisation')this.giveCards([this.randomCardType(),this.randomCardType()]);
  if(c.id==='Deduction')this.freeRefresh++;
  if(c.id==='Duet'){const clone=copy(u);Object.assign(clone,{id:++this.seq,clone:true,parent:u.id,until:this.elapsed+10,progress:0,attacks:0,accentProgress:0,flash:.3,windSnapshot:this.windFactor(u),trumpetSnapshot:this.units.some(x=>!x.clone&&x.profile.id==='euphonium'),sforzando:false});this.units.push(clone);}
  return ok('奏法已生效');}

@@ -39,3 +39,5 @@
 .wave-settlement{margin:9px 0 0;color:var(--green);font-size:11px;line-height:1.5}
 
 .overtime-warning{color:#9c4e36;font-weight:600}
+
+.draw-rules{display:block;margin-top:4px;font-size:9px;line-height:1.5;color:var(--muted)}

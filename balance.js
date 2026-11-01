@@ -861,7 +861,7 @@ global.ConcertoData = {
         {
           "count": 120,
           "hp": 300,
-          "bossHp": 47500,
+          "bossHp": 40375,
           "bossLane": 2,
           "normalRewardBudget": 80,
           "travelTime": 28,
@@ -872,7 +872,7 @@ global.ConcertoData = {
         {
           "count": 132,
           "hp": 320,
-          "bossHp": 47975,
+          "bossHp": 40779,
           "bossLane": 1,
           "normalRewardBudget": 88,
           "travelTime": 28,
@@ -883,7 +883,7 @@ global.ConcertoData = {
         {
           "count": 144,
           "hp": 340,
-          "bossHp": 48450,
+          "bossHp": 41183,
           "bossLane": 3,
           "normalRewardBudget": 96,
           "travelTime": 28,
@@ -910,7 +910,7 @@ global.ConcertoData = {
         {
           "count": 150,
           "hp": 360,
-          "bossHp": 48925,
+          "bossHp": 41586,
           "bossLane": 2,
           "normalRewardBudget": 100,
           "travelTime": 28,
@@ -921,7 +921,7 @@ global.ConcertoData = {
         {
           "count": 162,
           "hp": 380,
-          "bossHp": 49400,
+          "bossHp": 41990,
           "bossLane": 1,
           "normalRewardBudget": 108,
           "travelTime": 28,
@@ -932,7 +932,7 @@ global.ConcertoData = {
         {
           "count": 174,
           "hp": 400,
-          "bossHp": 49875,
+          "bossHp": 42394,
           "bossLane": 3,
           "normalRewardBudget": 116,
           "travelTime": 28,
@@ -959,7 +959,7 @@ global.ConcertoData = {
         {
           "count": 180,
           "hp": 420,
-          "bossHp": 60800,
+          "bossHp": 51680,
           "bossLane": 2,
           "normalRewardBudget": 120,
           "travelTime": 28,
@@ -970,7 +970,7 @@ global.ConcertoData = {
         {
           "count": 192,
           "hp": 440,
-          "bossHp": 61275,
+          "bossHp": 52084,
           "bossLane": 1,
           "normalRewardBudget": 128,
           "travelTime": 28,
@@ -981,7 +981,7 @@ global.ConcertoData = {
         {
           "count": 204,
           "hp": 460,
-          "bossHp": 61750,
+          "bossHp": 52488,
           "bossLane": 3,
           "normalRewardBudget": 136,
           "travelTime": 28,
@@ -1008,7 +1008,7 @@ global.ConcertoData = {
         {
           "count": 216,
           "hp": 480,
-          "bossHp": 62225,
+          "bossHp": 52891,
           "bossLane": 2,
           "normalRewardBudget": 144,
           "travelTime": 28,
@@ -1019,7 +1019,7 @@ global.ConcertoData = {
         {
           "count": 228,
           "hp": 500,
-          "bossHp": 62700,
+          "bossHp": 53295,
           "bossLane": 1,
           "normalRewardBudget": 152,
           "travelTime": 28,
@@ -1030,7 +1030,7 @@ global.ConcertoData = {
         {
           "count": 240,
           "hp": 520,
-          "bossHp": 63175,
+          "bossHp": 53699,
           "bossLane": 3,
           "normalRewardBudget": 160,
           "travelTime": 28,
@@ -1057,7 +1057,7 @@ global.ConcertoData = {
         {
           "count": 252,
           "hp": 530,
-          "bossHp": 63650,
+          "bossHp": 54103,
           "bossLane": 2,
           "normalRewardBudget": 168,
           "travelTime": 28,
@@ -1068,7 +1068,7 @@ global.ConcertoData = {
         {
           "count": 264,
           "hp": 540,
-          "bossHp": 64125,
+          "bossHp": 54506,
           "bossLane": 1,
           "normalRewardBudget": 176,
           "travelTime": 28,
@@ -1079,7 +1079,7 @@ global.ConcertoData = {
         {
           "count": 276,
           "hp": 550,
-          "bossHp": 64600,
+          "bossHp": 54910,
           "bossLane": 3,
           "normalRewardBudget": 184,
           "travelTime": 28,
