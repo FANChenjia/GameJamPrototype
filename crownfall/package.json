@@ -1,0 +1,8 @@
+{
+  "name": "crownfall-tabletop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A tactile, dependency-free card battler with AI and local-network play.",
+  "scripts": { "start": "node server.cjs", "test": "node --test tests/*.test.cjs" },
+  "engines": { "node": ">=18" }
+}

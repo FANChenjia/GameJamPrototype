@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#23483e">
+  <meta name="description" content="王阵：一副扑克，一枚骰子，两座王国。支持人机与局域网双人对战的纸牌桌游。">
+  <title>王阵 · Crownfall</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="cards.css">
+  <link rel="stylesheet" href="table-flip.css">
+  <script src="game.js" defer></script>
+  <script src="cards.js" defer></script>
+  <script src="table-flip.js" defer></script>
+  <script src="tutorial.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-crown" viewBox="0 0 32 32"><path d="m4 10 7 5 5-10 5 10 7-5-3 16H7z"/><path d="M9 22h14"/></symbol>
+    <symbol id="i-sword" viewBox="0 0 32 32"><path d="m12 21 13-16 2 1-2 7-10 11M8 18l9 9M5 28l7-7M4 25l3 4"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 32 32"><path d="M9 28V5m0 2c7-6 9 6 17 0v12c-8 6-10-6-17 0M5 28h8"/></symbol>
+    <symbol id="i-book" viewBox="0 0 32 32"><path d="M16 8c-4-3-8-3-12-2v20c4-1 8-1 12 2 4-3 8-3 12-2V6c-4-1-8-1-12 2v20M8 11h4m-4 5h4m8-5h4m-4 5h4"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 32 32"><path d="m5 13 6 0 7-6v18l-7-6H5zM23 11c3 3 3 7 0 10m3-14c6 5 6 13 0 18"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 32 32"><path d="m5 13 6 0 7-6v18l-7-6H5zM23 12l7 9m0-9-7 9"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 32 32"><path d="M26 12A11 11 0 1 0 27 21M26 4v9h-9"/></symbol>
+    <symbol id="i-link" viewBox="0 0 32 32"><path d="m13 20-3 3a5 5 0 0 1-7-7l6-6a5 5 0 0 1 7 0m3 2 3-3a5 5 0 0 1 7 7l-6 6a5 5 0 0 1-7 0m-5-6 10-10" transform="translate(1 2)"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 32 32"><path d="M5 16h22m-8-8 8 8-8 8"/></symbol>
+    <symbol id="i-close" viewBox="0 0 32 32"><path d="m8 8 16 16M24 8 8 24"/></symbol>
+    <symbol id="i-knight" viewBox="0 0 40 44"><path d="M10 36c0-9 10-12 12-18l-7 5-7-3 5-8 5-3 0-5 6 5c10 2 11 10 9 19l-2 8zM8 40h26M21 13h1M13 12l5 3"/></symbol>
+  </defs></svg>
+
+  <main class="game-shell">
+    <aside class="rail" aria-label="桌面工具">
+      <div class="brand-seal" aria-label="王阵"><svg><use href="#i-crown"/></svg></div>
+      <div class="vertical-wordmark" aria-hidden="true">CROWNFALL<span>纸上，成王。</span></div>
+      <div class="rail-tools">
+        <button class="round-tool" id="rules-button" title="玩法手册" aria-label="玩法手册"><svg><use href="#i-book"/></svg></button>
+        <button class="round-tool" id="sound-button" title="打开音效" aria-label="打开音效" aria-pressed="false"><svg><use href="#i-mute"/></svg></button>
+        <button class="round-tool" id="restart-button" title="重新开局" aria-label="重新开局"><svg><use href="#i-refresh"/></svg></button>
+      </div>
+      <span class="edition" aria-hidden="true">No. 001</span>
+    </aside>
+
+    <section class="table-wrap" aria-label="对战牌桌">
+      <div class="table" id="table">
+        <div class="table-grain" aria-hidden="true"></div>
+        <div class="table-stitch" aria-hidden="true"></div>
+        <div class="corner-ornament top-left" aria-hidden="true">♠</div><div class="corner-ornament bottom-right" aria-hidden="true">♣</div>
+        <div class="player-tag away-tag"><span class="player-avatar away-avatar"><svg><use href="#i-crown"/></svg></span><span><strong id="opponent-name">虎鲸</strong><small id="opponent-type">才不是大肥鱼</small></span><span class="tag-status" id="opponent-status">●</span></div>
+        <div class="round-badge"><span id="round-value">01</span><small>回合</small></div>
+
+        <div class="formation away" id="away-army" aria-label="对方牌阵"></div>
+
+        <div class="neutral-zone">
+          <div class="deck-group">
+            <div class="deck" id="deck" aria-label="公共牌堆"><div class="deck-back"><div class="back-frame"><svg><use href="#i-crown"/></svg><i>✧</i></div></div></div>
+            <span class="deck-count"><b id="deck-count">52</b> <span>/ 52</span></span>
+          </div>
+          <div class="table-mark" aria-hidden="true"><span class="mark-line"></span><div><svg><use href="#i-crown"/></svg><p>王 阵</p><small>C A R D S & C R O W N S</small></div><span class="mark-line"></span></div>
+          <div class="dice-group">
+            <button class="dice" id="dice" aria-label="掷骰，获得行动点"><span class="dice-face" id="dice-face"></span></button>
+            <span id="dice-caption" class="dice-caption">点击掷骰 <span>↗</span></span>
+          </div>
+        </div>
+
+        <div class="formation home" id="home-army" aria-label="你的牌阵"></div>
+        <div class="player-tag home-tag"><span class="player-avatar"><svg><use href="#i-crown"/></svg></span><span><strong>你</strong><small id="my-type">执青 · 先手</small></span><span class="tag-status home-status">●</span></div>
+        <div class="table-footer"><span class="status-dot"></span><span id="table-status">一副扑克，一座王国。</span></div>
+        <div class="target-banner" id="target-banner" hidden><span id="target-instruction"></span><button id="cancel-target">取消 <kbd>Esc</kbd></button></div>
+      </div>
+      <div class="under-table"><span>54 张牌 · 1 枚骰子 · 2 位君主</span><span id="mode-caption">本地演练 <i></i> 无需联网</span></div>
+    </section>
+
+    <aside class="command-panel" aria-label="行动面板">
+      <div class="mode-switch" aria-label="对战模式"><button id="ai-mode" class="active" aria-pressed="true">人机对战</button><button id="lan-mode" aria-pressed="false"><svg><use href="#i-link"/></svg>好友联机</button></div>
+      <div id="room-strip" class="room-strip" hidden><span>房间 <b id="room-code"></b></span><button id="room-share" title="复制邀请链接" aria-label="复制邀请链接"><svg><use href="#i-link"/></svg></button></div>
+
+      <section class="turn-section">
+        <div class="eyebrow"><i id="turn-dot"></i><span id="turn-eyebrow">YOUR TURN</span><span id="turn-index">01</span><button id="tutorial-exit" class="tutorial-exit" hidden>退出教程</button></div>
+        <h1 id="turn-title">由你，执棋。</h1>
+        <p id="turn-description">掷下骰子，让命运开局。</p>
+      </section>
+
+      <section class="ap-section" aria-label="剩余行动点"><div class="ap-heading"><span>行动点</span><span><b id="ap-value">—</b><small> / <span id="ap-total">6</span></small></span></div><div class="ap-track" id="ap-track"></div></section>
+
+      <div class="action-list">
+        <button class="action-tile recruit-tile" id="recruit-button"><span class="tile-icon"><svg><use href="#i-flag"/></svg></span><span class="tile-copy"><strong>排兵</strong><small>点数即生命，列入前阵</small></span><span class="cost">1<span>点</span></span></button>
+        <button class="action-tile promote-tile" id="promote-button"><span class="tile-icon"><svg><use href="#i-crown"/></svg></span><span class="tile-copy"><strong>册封</strong><small>士兵晋升，授以骑士之名</small></span><span class="cost">2<span>点</span></span></button>
+        <button class="action-tile attack-tile" id="attack-button"><span class="tile-icon"><svg><use href="#i-sword"/></svg></span><span class="tile-copy"><strong>攻击</strong><small>翻开命运，突破敌阵</small></span><span class="cost">2<span>点</span></span></button>
+      </div>
+      <div class="tactical-note" id="tactical-note"><span>✧</span><p id="tactical-text">士兵生命等于牌面点数，骑士生命为点数 +4。</p></div>
+      <button class="end-turn" id="end-button" disabled><span>结束回合</span><svg><use href="#i-arrow"/></svg></button>
+
+      <section class="journal"><div class="journal-heading"><span>战局手记</span><button id="journal-toggle" aria-expanded="false">展开 <span>↗</span></button></div><div id="journal-entries" class="journal-entries" aria-live="polite"><p class="journal-empty">牌未落，胜负未定。</p></div></section>
+      <button class="rules-link" id="rules-link">初次入座？跟着玩一局 <span>↗</span></button>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="effects" aria-hidden="true"></div>
+
+  <dialog id="rules-dialog" class="paper-dialog rules-dialog" aria-labelledby="rules-title">
+    <button class="dialog-close" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+    <span class="eyebrow">THE FIELD GUIDE · 01</span><h2 id="rules-title">一副牌，排一座王国。</h2><p class="dialog-intro">击破对方 Joker 主将，即可获胜。每人一张 Joker，其余 52 张牌共用。</p>
+    <div class="rule-formation"><div><span>♔</span><strong>主将</strong><small>24 生命</small></div><i>←</i><div><span>♞</span><strong>骑士 × 3</strong><small>点数 +4 生命 · 攻击 +1</small></div><i>←</i><div><span>⚑</span><strong>士兵 × 5</strong><small>点数即生命 · 受伤 ×2</small></div></div>
+    <ol class="rule-steps"><li><b>掷骰</b><span>每回合掷一次六面骰，点数即本回合行动点。余点在回合结束时清空。</span></li><li><b>排兵 · 1 点</b><span>抽一张牌成为士兵，生命等于牌面点数，每回合最多 2 次。</span></li><li><b>册封 · 2 点</b><span>士兵晋升骑士，生命上限变为牌面点数 +4，并回满。每名骑士为攻击增加 1 点基础伤害。</span></li><li><b>攻击 · 2 点</b><span>选择对方最外层单位，从牌堆抽牌、亮牌，再命中结算。先破士兵，再破骑士，最后是主将。</span></li></ol>
+    <div class="damage-guide"><span>抽牌</span><div><b>A–3</b><small>2 伤害</small></div><div><b>4–6</b><small>3 伤害</small></div><div><b>7–9</b><small>4 伤害</small></div><div><b>10–Q</b><small>5 伤害</small></div><div><b>K</b><small>6 伤害</small></div></div>
+    <p class="fine-print">A=1、J=11、Q=12、K=13，花色不影响生命或伤害。基础伤害 = 1 + ⌈牌面数值 ÷ 3⌉。先加骑士增益，再对士兵翻倍；击破士兵消耗的基础伤害向上取整，余伤传递给最外层生命最低的单位。牌堆耗尽重洗弃牌，双方主将依次受到 2、4、6… 点疲劳伤害；同时归零则平局。</p>
+    <div class="rules-tutorial-entry"><p class="fine-print" id="rules-tutorial-note">随时练习，退出教程后回到当前牌局。</p><button class="primary-button" id="rules-start-tutorial">开始新手教程 <span>→</span></button><button class="text-button" data-close>回到牌桌</button></div>
+  </dialog>
+
+  <dialog id="lan-dialog" class="paper-dialog lan-dialog" aria-labelledby="lan-title">
+    <button class="dialog-close" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+    <span class="eyebrow">A SEAT FOR TWO</span><h2 id="lan-title">邀一位，来对弈。</h2><p class="dialog-intro">连接同一 Wi-Fi，让两副牌阵在一张桌上相遇。</p>
+    <div id="lan-offline" class="lan-offline" hidden>联机需要本地服务。请在游戏文件夹运行 <code>node server.cjs</code>，再打开 <code>http://localhost:3210</code>。人机对战可直接打开网页游玩。</div>
+    <div class="lan-options" id="lan-options"><button class="primary-button" id="create-room">开一张新桌 <span>＋</span></button><div class="or-divider"><span>或凭房间码入座</span></div><form id="join-form"><label for="join-code">六位房间码</label><div class="join-row"><input id="join-code" name="code" placeholder="A2C6F8" maxlength="6" pattern="[a-fA-F0-9]{6}" autocomplete="off" autocapitalize="characters" spellcheck="false" required><button class="primary-button" id="join-button" type="submit">入座 <span>→</span></button></div></form></div>
+    <div id="lan-active" hidden><div class="invite-ticket"><small>把房间码交给你的对手</small><b id="invite-code"></b><button id="copy-invite" class="primary-button">复制邀请链接 <svg><use href="#i-link"/></svg></button></div><p id="lan-address" class="fine-print"></p><button class="text-button" id="leave-room">离开牌桌，返回人机对战</button></div>
+    <p class="lan-message" id="lan-message" role="status"></p><p class="fine-print" id="lan-help">由开桌的电脑保持服务运行；对手需打开该电脑的局域网地址。断线后自动重连，刷新页面也能回到原座位。</p>
+  </dialog>
+
+  <dialog id="tutorial-dialog" class="paper-dialog small-dialog" aria-labelledby="tutorial-title"><button class="dialog-close" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button><span class="eyebrow">YOUR FIRST CROWN</span><h2 id="tutorial-title">跟着虎鲸，玩第一局。</h2><p class="dialog-intro">约一分钟，练习掷骰、排兵、册封和逐层突破。虎鲸会用一支小队和受伤的主将陪你演练。<br><br>随时可退出教程，返回原来的牌桌。</p><button class="primary-button" id="start-tutorial">开始教程 <span>→</span></button><button class="text-button" id="tutorial-read-rules">先看完整规则</button></dialog>
+
+  <dialog id="restart-dialog" class="paper-dialog small-dialog" aria-labelledby="restart-title"><button class="dialog-close" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button><span class="eyebrow">A FRESH DECK</span><h2 id="restart-title">再起一座王国。</h2><p class="dialog-intro" id="restart-description">收起这一局的牌阵，重新洗牌开局。</p><button class="primary-button" id="confirm-restart">重新开局 <span>↻</span></button></dialog>
+
+  <dialog id="result-dialog" class="paper-dialog result-dialog" aria-labelledby="result-title"><span class="result-seal"><svg><use href="#i-crown"/></svg></span><span class="eyebrow" id="result-eyebrow">THE CROWN IS YOURS</span><h2 id="result-title">此局，加冕。</h2><p id="result-description" class="dialog-intro"></p><div class="result-stats"><span><b id="result-rounds"></b><small>回合</small></span><span><b id="result-hp"></b><small>主将余血</small></span><span><b id="result-knights"></b><small>在场骑士</small></span></div><button class="primary-button" id="play-again">再来一局 <span>→</span></button><button class="text-button" data-close>回看牌桌</button></dialog>
+</body>
+</html>
