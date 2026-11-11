@@ -21,6 +21,7 @@
     <symbol id="i-crown" viewBox="0 0 32 32"><path d="m4 10 7 5 5-10 5 10 7-5-3 16H7z"/><path d="M9 22h14"/></symbol>
     <symbol id="i-sword" viewBox="0 0 32 32"><path d="m12 21 13-16 2 1-2 7-10 11M8 18l9 9M5 28l7-7M4 25l3 4"/></symbol>
     <symbol id="i-flag" viewBox="0 0 32 32"><path d="M9 28V5m0 2c7-6 9 6 17 0v12c-8 6-10-6-17 0M5 28h8"/></symbol>
+    <symbol id="i-draw" viewBox="0 0 32 32"><path d="M11 5h15v21H11zM7 8H5v21h16v-1M15 14h7m-3-3v6"/></symbol>
     <symbol id="i-book" viewBox="0 0 32 32"><path d="M16 8c-4-3-8-3-12-2v20c4-1 8-1 12 2 4-3 8-3 12-2V6c-4-1-8-1-12 2v20M8 11h4m-4 5h4m8-5h4m-4 5h4"/></symbol>
     <symbol id="i-sound" viewBox="0 0 32 32"><path d="m5 13 6 0 7-6v18l-7-6H5zM23 11c3 3 3 7 0 10m3-14c6 5 6 13 0 18"/></symbol>
     <symbol id="i-mute" viewBox="0 0 32 32"><path d="m5 13 6 0 7-6v18l-7-6H5zM23 12l7 9m0-9-7 9"/></symbol>
@@ -55,7 +56,7 @@
 
         <div class="neutral-zone">
           <div class="deck-group">
-            <div class="deck" id="deck" aria-label="公共牌堆"><div class="deck-back"><div class="back-frame"><svg><use href="#i-crown"/></svg><i>✧</i></div></div></div>
+            <button class="deck" id="deck" type="button" aria-label="公共牌堆"><span class="deck-back"><span class="back-frame"><svg><use href="#i-crown"/></svg><i>✧</i></span></span></button>
             <span class="deck-count"><b id="deck-count">52</b> <span>/ 52</span></span>
           </div>
           <div class="table-mark" aria-hidden="true"><span class="mark-line"></span><div><svg><use href="#i-crown"/></svg><p>王 阵</p><small>C A R D S & C R O W N S</small></div><span class="mark-line"></span></div>
@@ -86,9 +87,10 @@
       <section class="ap-section" aria-label="剩余行动点"><div class="ap-heading"><span>行动点</span><span><b id="ap-value">—</b><small> / <span id="ap-total">6</span></small></span></div><div class="ap-track" id="ap-track"></div></section>
 
       <div class="action-list">
-        <button class="action-tile recruit-tile" id="recruit-button"><span class="tile-icon"><svg><use href="#i-flag"/></svg></span><span class="tile-copy"><strong>排兵</strong><small>点数即生命，列入前阵</small></span><span class="cost">1<span>点</span></span></button>
+        <button class="action-tile draw-tile" id="draw-button"><span class="tile-icon"><svg><use href="#i-draw"/></svg></span><span class="tile-copy"><strong>抽牌</strong><small>先放入备选，再定用途</small></span><span class="cost">1<span>点</span></span></button>
+        <button class="action-tile recruit-tile" id="recruit-button"><span class="tile-icon"><svg><use href="#i-flag"/></svg></span><span class="tile-copy"><strong>排兵</strong><small>将备选牌列入前阵</small></span><span class="cost">0<span>点</span></span></button>
         <button class="action-tile promote-tile" id="promote-button"><span class="tile-icon"><svg><use href="#i-crown"/></svg></span><span class="tile-copy"><strong>册封</strong><small>士兵晋升，授以骑士之名</small></span><span class="cost">2<span>点</span></span></button>
-        <button class="action-tile attack-tile" id="attack-button"><span class="tile-icon"><svg><use href="#i-sword"/></svg></span><span class="tile-copy"><strong>攻击</strong><small>翻开命运，突破敌阵</small></span><span class="cost">2<span>点</span></span></button>
+        <button class="action-tile attack-tile" id="attack-button"><span class="tile-icon"><svg><use href="#i-sword"/></svg></span><span class="tile-copy"><strong>攻击</strong><small>用这张备选牌突破敌阵</small></span><span class="cost">1<span>点</span></span></button>
       </div>
       <div class="tactical-note" id="tactical-note"><span>✧</span><p id="tactical-text">士兵生命等于牌面点数，骑士生命为点数 +4。</p></div>
       <button class="end-turn" id="end-button" disabled><span>结束回合</span><svg><use href="#i-arrow"/></svg></button>
@@ -100,12 +102,13 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="effects" aria-hidden="true"></div>
+  <aside id="reserve-preview" class="reserve-book" role="dialog" aria-label="备选牌数值预览" hidden><button class="book-close" id="close-preview" aria-label="关闭预览">×</button><div id="reserve-preview-content"></div></aside>
 
   <dialog id="rules-dialog" class="paper-dialog rules-dialog" aria-labelledby="rules-title">
     <button class="dialog-close" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button>
     <span class="eyebrow">THE FIELD GUIDE · 01</span><h2 id="rules-title">一副牌，排一座王国。</h2><p class="dialog-intro">击破对方 Joker 主将，即可获胜。每人一张 Joker，其余 52 张牌共用。</p>
     <div class="rule-formation"><div><span>♔</span><strong>主将</strong><small>24 生命</small></div><i>←</i><div><span>♞</span><strong>骑士 × 3</strong><small>点数 +4 生命 · 攻击 +1</small></div><i>←</i><div><span>⚑</span><strong>士兵 × 5</strong><small>点数即生命 · 受伤 ×2</small></div></div>
-    <ol class="rule-steps"><li><b>掷骰</b><span>每回合掷一次六面骰，点数即本回合行动点。余点在回合结束时清空。</span></li><li><b>排兵 · 1 点</b><span>抽一张牌成为士兵，生命等于牌面点数，每回合最多 2 次。</span></li><li><b>册封 · 2 点</b><span>士兵晋升骑士，生命上限变为牌面点数 +4，并回满。每名骑士为攻击增加 1 点基础伤害。</span></li><li><b>攻击 · 2 点</b><span>选择对方最外层单位，从牌堆抽牌、亮牌，再命中结算。先破士兵，再破骑士，最后是主将。</span></li></ol>
+    <ol class="rule-steps"><li><b>掷骰</b><span>每回合掷一次六面骰，点数即本回合行动点。余点在回合结束时清空。</span></li><li><b>抽牌 · 1 点</b><span>抽一张牌到主将左侧的备选区，只能放一张。悬浮或点击这张牌可查看排兵与攻击数值；未使用的牌可留到下回合。</span></li><li><b>排兵 / 弃牌 · 免费</b><span>将备选牌以满血排成士兵，每回合最多 2 次；或免费弃掉。即使没有行动点也可执行。</span></li><li><b>册封 · 2 点</b><span>士兵晋升骑士，生命上限变为牌面点数 +4，并回满。每名骑士为攻击增加 1 点基础伤害。</span></li><li><b>攻击 · 1 点</b><span>使用当前备选牌，选择对方最外层单位。卡牌出列展示伤害，再飞向目标。先破士兵，再破骑士，最后是主将。</span></li></ol>
     <div class="damage-guide"><span>抽牌</span><div><b>A–3</b><small>2 伤害</small></div><div><b>4–6</b><small>3 伤害</small></div><div><b>7–9</b><small>4 伤害</small></div><div><b>10–Q</b><small>5 伤害</small></div><div><b>K</b><small>6 伤害</small></div></div>
     <p class="fine-print">A=1、J=11、Q=12、K=13，花色不影响生命或伤害。基础伤害 = 1 + ⌈牌面数值 ÷ 3⌉。先加骑士增益，再对士兵翻倍；击破士兵消耗的基础伤害向上取整，余伤传递给最外层生命最低的单位。牌堆耗尽重洗弃牌，双方主将依次受到 2、4、6… 点疲劳伤害；同时归零则平局。</p>
     <div class="rules-tutorial-entry"><p class="fine-print" id="rules-tutorial-note">随时练习，退出教程后回到当前牌局。</p><button class="primary-button" id="rules-start-tutorial">开始新手教程 <span>→</span></button><button class="text-button" data-close>回到牌桌</button></div>
@@ -120,7 +123,7 @@
     <p class="lan-message" id="lan-message" role="status"></p><p class="fine-print" id="lan-help">由开桌的电脑保持服务运行；对手需打开该电脑的局域网地址。断线后自动重连，刷新页面也能回到原座位。</p>
   </dialog>
 
-  <dialog id="tutorial-dialog" class="paper-dialog small-dialog" aria-labelledby="tutorial-title"><button class="dialog-close" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button><span class="eyebrow">YOUR FIRST CROWN</span><h2 id="tutorial-title">跟着虎鲸，玩第一局。</h2><p class="dialog-intro">约一分钟，练习掷骰、排兵、册封和逐层突破。虎鲸会用一支小队和受伤的主将陪你演练。<br><br>随时可退出教程，返回原来的牌桌。</p><button class="primary-button" id="start-tutorial">开始教程 <span>→</span></button><button class="text-button" id="tutorial-read-rules">先看完整规则</button></dialog>
+  <dialog id="tutorial-dialog" class="paper-dialog small-dialog" aria-labelledby="tutorial-title"><button class="dialog-close" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button><span class="eyebrow">YOUR FIRST CROWN</span><h2 id="tutorial-title">跟着虎鲸，玩第一局。</h2><p class="dialog-intro">约两分钟，练习抽牌、免费排兵 / 弃牌、册封和逐层突破。虎鲸会用一支小队和受伤的主将陪你演练。<br><br>随时可退出教程，返回原来的牌桌。</p><button class="primary-button" id="start-tutorial">开始教程 <span>→</span></button><button class="text-button" id="tutorial-read-rules">先看完整规则</button></dialog>
 
   <dialog id="restart-dialog" class="paper-dialog small-dialog" aria-labelledby="restart-title"><button class="dialog-close" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button><span class="eyebrow">A FRESH DECK</span><h2 id="restart-title">再起一座王国。</h2><p class="dialog-intro" id="restart-description">收起这一局的牌阵，重新洗牌开局。</p><button class="primary-button" id="confirm-restart">重新开局 <span>↻</span></button></dialog>
 

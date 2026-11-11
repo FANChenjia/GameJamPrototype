@@ -12,10 +12,11 @@
   let presentationQueue = Promise.resolve();
   let tutorial = null;
   let tutorialSpotlight = null;
+  let previewOwner = null, previewPinned = false, previewTimer;
   let netSession = null, netInfo = null, lastResult = -1, gameIndex = 0, toastTimer, soundEnabled = false, audio;
   try {
     const saved = JSON.parse(localStorage.getItem(STORE));
-    if ([1, 2].includes(saved?.version) && saved.players?.length === 2 && Array.isArray(saved.deck) && Array.isArray(saved.discard) && ['roll', 'action', 'over'].includes(saved.phase) && saved.players.every(p => p.soldiers?.length === 5 && p.knights?.length === 3)) state = G.migrate(saved);
+    if ([1, 2, 3].includes(saved?.version) && saved.players?.length === 2 && Array.isArray(saved.deck) && Array.isArray(saved.discard) && ['roll', 'action', 'over'].includes(saved.phase) && saved.players.every(p => p.soldiers?.length === 5 && p.knights?.length === 3)) state = G.migrate(saved);
   } catch { /* A fresh table is always available when storage is disabled. */ }
   gameIndex = (state.turn + state.turnNumber - 1) % 2;
   function save(value = state) { if (mode === 'ai' && !tutorial) try { localStorage.setItem(STORE, JSON.stringify(value)); } catch {} }
@@ -72,13 +73,51 @@
   }
   function formationHTML(owner) {
     const p = state.players[owner];
-    return `<div class="card-row row-commander"><span class="rank-caption"><em>I</em> 主将</span>${unitHTML(null, owner, 'commander')}</div><div class="card-row row-knights"><span class="rank-caption"><em>II</em> 骑士</span>${p.knights.map((u, i) => u ? unitHTML(u, owner, 'knight') : emptyHTML('knight', i)).join('')}</div><div class="card-row row-soldiers"><span class="rank-caption"><em>III</em> 士兵</span>${p.soldiers.map((u, i) => u ? unitHTML(u, owner, 'soldier') : emptyHTML('soldier', i)).join('')}</div>`;
+    return `${reserveHTML(owner)}<div class="card-row row-commander"><span class="rank-caption"><em>I</em> 主将</span>${unitHTML(null, owner, 'commander')}</div><div class="card-row row-knights"><span class="rank-caption"><em>II</em> 骑士</span>${p.knights.map((u, i) => u ? unitHTML(u, owner, 'knight') : emptyHTML('knight', i)).join('')}</div><div class="card-row row-soldiers"><span class="rank-caption"><em>III</em> 士兵</span>${p.soldiers.map((u, i) => u ? unitHTML(u, owner, 'soldier') : emptyHTML('soldier', i)).join('')}</div>`;
+  }
+  function reserveHTML(owner) {
+    const card = state.players[owner].reserve;
+    return `<div class="reserve-zone" data-reserve-zone="${owner}"><span class="reserve-label">备选 <i>${card ? '1' : '0'}/1</i></span>${card ? `<div class="unit reserve-card" data-unit="${card.id}" data-owner="${owner}"><button class="playing-card ${red(card) ? 'red' : ''}" data-reserve="${owner}" aria-label="${escape(G.name(card))}，查看排兵与攻击数值" aria-controls="reserve-preview">${cardFaceHTML(card)}</button></div>` : '<div class="reserve-empty" aria-hidden="true">＋</div>'}${owner === seat ? '<button class="discard-button" id="discard-button" disabled title="免费弃掉备选牌（X）">弃牌 <span>0</span></button>' : ''}</div>`;
+  }
+  function hidePreview() {
+    clearTimeout(previewTimer);
+    previewOwner = null; previewPinned = false; $('reserve-preview').hidden = true;
+  }
+  function positionPreview() {
+    if (previewOwner === null) return;
+    const anchor = document.querySelector(`[data-reserve="${previewOwner}"]`);
+    if (!anchor) return hidePreview();
+    const r = anchor.getBoundingClientRect(), book = $('reserve-preview');
+    const viewportWidth = document.documentElement.clientWidth;
+    book.style.width = Math.min(354, viewportWidth - 24) + 'px';
+    const b = book.getBoundingClientRect();
+    const floor = innerWidth <= 760 ? Math.min(innerHeight, document.querySelector('.command-panel').getBoundingClientRect().top) : innerHeight;
+    book.style.left = Math.max(12, Math.min(viewportWidth - b.width - 12, r.right + 16)) + 'px';
+    book.style.top = Math.max(12, Math.min(floor - b.height - 12, innerWidth <= 760 ? r.top - b.height - 14 : r.top - 24)) + 'px';
+  }
+  function showPreview(owner, pinned = false) {
+    clearTimeout(previewTimer);
+    const p = state.players[owner], card = p.reserve;
+    if (!card || presenting || resetting || selection) return hidePreview();
+    previewOwner = owner; previewPinned = pinned;
+    const bonus = count(p.knights), power = G.power(card), damage = power + bonus;
+    $('reserve-preview-content').innerHTML = `<div class="book-heading"><span>${escape(G.name(card))}</span><small>一牌 · 两种去处</small></div><div class="book-pages"><section><span class="book-kicker">排兵 <i>0 点</i></span><b>${card.value}<small>生命</small></b><p>士兵 · 牌面点数</p><footer>${count(p.soldiers) >= 5 ? '士兵位置已满' : state.turn === owner && state.recruits >= 2 ? '本回合排兵已达上限' : '满血加入前阵'}</footer></section><section><span class="book-kicker">攻击 <i>1 点</i></span><b>${damage}<small>基础伤害</small></b><p>牌面 ${power} ＋ 骑士 ${bonus}</p><footer>士兵 <strong>${damage * 2}</strong> · 骑士 / 主将 <strong>${damage}</strong></footer></section></div>`;
+    $('reserve-preview').hidden = false; positionPreview();
   }
   function getRects() {
     return new Map([...document.querySelectorAll('.unit')].map(el => [el.dataset.unit, { rect: el.getBoundingClientRect(), element: el }]));
   }
   function renderArmies(ev) {
     const previous = getRects();
+    if (ev?.type === 'discard' && !reduceMotion) {
+      const old = previous.get(ev.card.id);
+      if (old) {
+        const r = old.element.querySelector('button').getBoundingClientRect(), clone = old.element.querySelector('button').cloneNode(true);
+        clone.classList.add('falling-card'); clone.style.cssText = `left:${r.x}px;top:${r.y}px;width:${r.width}px;height:${r.height}px`;
+        $('effects').append(clone);
+        clone.animate([{ opacity: 1, transform: 'rotate(0)' }, { opacity: 0, transform: 'translate(-50px,70px) rotate(-25deg) scale(.7)' }], { duration: 480, easing: 'ease-in' }).finished.then(() => clone.remove());
+      }
+    }
     if (ev?.type === 'attack' && !reduceMotion) {
       ev.hits.filter(h => h.killed && h.role !== 'commander').forEach(hit => {
         const old = previous.get(hit.id);
@@ -117,8 +156,8 @@
     } else if (waiting) { title = '留一个，座位。'; description = '分享邀请，等另一位君主入座。'; eyebrow = 'WAITING FOR A FRIEND'; }
     else if (!connected()) { title = '静候，归来。'; description = connection !== 'ok' ? '正在重连牌桌，牌阵会为你保留。' : '对手暂时离线，重连后继续。'; eyebrow = 'RECONNECTING'; }
     else if (otherTurn) { title = '静候，落子。'; description = mode === 'ai' ? AI_NAME + '正在推演下一步。' : '对手正在落子，留意他的牌阵。'; eyebrow = 'OPPONENT’S TURN'; }
-    else { title = '由你，执棋。'; description = selection === 'attack' ? '点选亮起的敌方单位，发起攻击。' : selection === 'promote' ? '选一名士兵，为他加冕骑士之名。' : state.phase === 'roll' ? '掷下骰子，让命运开局。' : state.ap === 0 ? '行动点已用尽，交出这一回合。' : '落一张牌，向王冠再近一步。'; eyebrow = 'YOUR TURN'; }
-    if (presenting) description = ({ draw: '从牌堆抽取攻击牌…', reveal: '牌已翻开，蓄势待发。', strike: '突破敌阵！', impact: '伤害结算中…' })[attackStage] || description;
+    else { title = '由你，执棋。'; description = selection === 'attack' ? '点选亮起的敌方单位，发起攻击。' : selection === 'promote' ? '选一名士兵，为他加冕骑士之名。' : state.phase === 'roll' ? '掷下骰子，让命运开局。' : state.ap === 0 ? own.reserve ? '还可以免费排兵或弃牌。' : '行动点已用尽，交出这一回合。' : '落一张牌，向王冠再近一步。'; eyebrow = 'YOUR TURN'; }
+    if (presenting) description = ({ draw: '备选牌出列，准备进攻…', reveal: '牌已翻开，蓄势待发。', strike: '突破敌阵！', impact: '伤害结算中…' })[attackStage] || description;
     if (resetting) { title = '再起，一座王国。'; description = document.body.dataset.resetStage === 'settle' ? '牌桌落稳，新局将启。' : '收起旧牌阵，重新开局。'; eyebrow = 'A FRESH DECK'; }
     $('turn-title').textContent = title; $('turn-description').textContent = description; $('turn-eyebrow').textContent = eyebrow;
     $('turn-dot').style.background = waiting || !connected() ? '#bca16b' : otherTurn ? '#bd927c' : '#7d9678';
@@ -128,13 +167,16 @@
     $('ap-total').textContent = state.die || 6;
     document.querySelector('.ap-heading>span:first-child').textContent = otherTurn && !waiting ? '对手行动点' : '行动点';
     $('ap-track').innerHTML = Array.from({ length: 6 }, (_, i) => `<i class="ap-pip ${i < state.ap ? 'lit' : i < (state.die || 0) ? 'spent' : ''}"></i>`).join('');
-    const recruitReason = !canAct() ? '先掷骰，获得行动点' : count(own.soldiers) === 5 ? '士兵位置已满' : state.recruits >= 2 ? '本回合已排兵两次' : '排兵 · 1 行动点（R）';
-    $('recruit-button').disabled = !canAct() || state.ap < 1 || count(own.soldiers) >= 5 || state.recruits >= 2;
-    $('recruit-button').title = recruitReason;
+    $('draw-button').disabled = !canAct() || state.ap < 1 || Boolean(own.reserve);
+    $('draw-button').title = own.reserve ? '先使用或弃掉备选牌' : '抽牌 · 1 行动点（F）';
+    $('deck').disabled = $('draw-button').disabled;
+    $('recruit-button').disabled = !canAct() || !own.reserve || count(own.soldiers) >= 5 || state.recruits >= 2;
+    $('recruit-button').title = !own.reserve ? '先抽牌放入备选区' : count(own.soldiers) === 5 ? '士兵位置已满' : state.recruits >= 2 ? '本回合已排兵两次' : '排兵 · 免费（R）';
+    $('discard-button').disabled = !canAct() || !own.reserve;
     $('promote-button').disabled = !canAct() || state.ap < 2 || !count(own.soldiers) || count(own.knights) >= 3;
     $('promote-button').title = !count(own.soldiers) ? '先排兵，再选择士兵册封' : count(own.knights) === 3 ? '骑士位置已满' : '册封 · 2 行动点（C）';
-    $('attack-button').disabled = !canAct() || state.ap < 2;
-    $('attack-button').title = '攻击 · 2 行动点，再点选敌方最外层目标（A）';
+    $('attack-button').disabled = !canAct() || !own.reserve || state.ap < 1;
+    $('attack-button').title = !own.reserve ? '先抽牌放入备选区' : '用备选牌攻击 · 1 行动点（A）';
     $('promote-button').classList.toggle('active', selection === 'promote'); $('attack-button').classList.toggle('active', selection === 'attack');
     $('end-button').disabled = !canAct();
     $('end-button').title = '结束回合，未使用的行动点会清空（E）';
@@ -144,7 +186,7 @@
     $('dice-caption').innerHTML = rolling ? '命运转动中' : waiting ? '等待入座' : !connected() ? '等待重连' : state.phase === 'over' ? '胜负已定' : otherTurn ? '对手的骰子' : state.phase === 'roll' ? '点击掷骰 <span>↗</span>' : '本回合已掷';
     if (!rolling) drawDie(state.die || 5);
     $('deck-count').textContent = state.deckCount ?? state.deck.length;
-    $('deck').setAttribute('aria-label', '公共牌堆，剩余 ' + (state.deckCount ?? state.deck.length) + ' 张');
+    $('deck').setAttribute('aria-label', '抽牌 · 1 行动点，公共牌堆剩余 ' + (state.deckCount ?? state.deck.length) + ' 张');
     $('opponent-name').textContent = mode === 'ai' ? AI_NAME : '对方';
     $('opponent-type').textContent = mode === 'ai' ? AI_TAGLINE : room?.ready ? room.connected[1 - seat] ? '已入座' : '重连中' : '空席以待';
     $('opponent-status').classList.toggle('offline', mode === 'lan' && !room?.connected[1 - seat]);
@@ -156,9 +198,10 @@
     $('room-strip').hidden = mode !== 'lan'; if (room) $('room-code').textContent = room.code;
     $('target-banner').hidden = !selection;
     $('target-instruction').textContent = selection === 'attack' ? '选择最外层的敌方目标' : '选择一名士兵，册封骑士';
-    const note = selection === 'attack' ? '亮起的单位可以攻击。先亮牌，再进攻；剩余伤害继续突破下一层。' : selection === 'promote' ? '骑士生命为<b>牌面点数 +4</b>，册封回满；每名骑士使攻击增加 <b>1</b> 点伤害。' : state.phase === 'action' && myTurn() && state.ap === 1 ? (state.recruits < 2 && count(own.soldiers) < 5 ? '还剩 <b>1</b> 点，可以再招一名士兵守住前阵。' : '行动点不足以册封或攻击，可以结束回合。') : '士兵生命等于<b>牌面点数</b>；骑士生命为<b>点数 +4</b>，每名使攻击 +1。';
+    const note = selection === 'attack' ? '使用备选牌进攻；剩余伤害继续突破下一层。' : selection === 'promote' ? '骑士生命为<b>牌面点数 +4</b>，册封回满；每名骑士使攻击 +1。' : own.reserve ? '悬浮备选牌查看数值。<b>免费排兵 / 弃牌</b>，或花 <b>1</b> 点攻击。' : '花 <b>1</b> 点抽牌到备选区，再决定用途；备选区只放一张牌。';
     $('tactical-text').innerHTML = note;
     $('journal-entries').innerHTML = state.log.length ? state.log.slice(0, 30).map(ev => `<p class="journal-entry ${ev.actor === seat ? 'mine' : ''}"><small>${String(ev.round).padStart(2, '0')}</small><span>${ev.actor === seat ? '你' : mode === 'ai' ? AI_NAME : '对方'} · ${escape(ev.text)}</span></p>`).join('') : '<p class="journal-empty">牌未落，胜负未定。</p>';
+    if (previewOwner !== null) showPreview(previewOwner, previewPinned);
     renderTutorialUI();
     if (state.phase === 'over') updateResult();
   }
@@ -176,7 +219,7 @@
     $('turn-eyebrow').textContent = `新手教程 · ${tutorial.step + 1} / ${T.steps.length}`;
     $('turn-title').textContent = step.title;
     $('turn-description').textContent = state.turn !== seat ? '虎鲸正在把回合交还给你，稍等一下。' : rolling ? '骰子正在落稳，点数就是本回合行动点。' : presenting ? '先看清攻击牌，再观察敌阵的生命变化。' : step.text;
-    const actions = { roll: 'dice', recruit: 'recruit-button', promote: 'promote-button', attack: 'attack-button', end: 'end-button' };
+    const actions = { roll: 'dice', draw: 'draw-button', discard: 'discard-button', recruit: 'recruit-button', promote: 'promote-button', attack: 'attack-button', end: 'end-button' };
     for (const [type, id] of Object.entries(actions)) if (type !== step.type) $(id).disabled = true;
     if (!$(step.button).disabled && !selection) $(step.button).classList.add('tutorial-focus');
   }
@@ -202,12 +245,12 @@
     function modalOpen() { return Boolean(document.querySelector('dialog[open]')); }
     spotlight.guardClick = event => {
       if (!tutorial || modalOpen()) return;
-      if (spotlight.focus.some(el => el.contains(event.target)) || document.querySelector('.turn-section').contains(event.target)) return;
+      if (event.target.closest('#reserve-preview') || spotlight.focus.some(el => el.contains(event.target)) || document.querySelector('.turn-section').contains(event.target)) return;
       event.preventDefault(); event.stopImmediatePropagation();
     };
     spotlight.guardTab = event => {
       if (event.key !== 'Tab' || !tutorial || modalOpen()) return;
-      const controls = [...new Set([...spotlight.focus, $('tutorial-exit')])].filter(el => el?.isConnected && !el.disabled && !el.hidden);
+      const controls = [...new Set([...spotlight.focus, ...(!$('reserve-preview').hidden ? [$('close-preview')] : []), $('tutorial-exit')])].filter(el => el?.isConnected && !el.disabled && !el.hidden);
       if (!controls.length) return;
       event.preventDefault(); event.stopImmediatePropagation();
       const index = controls.indexOf(document.activeElement), direction = event.shiftKey ? -1 : 1;
@@ -251,6 +294,10 @@
       } else if (action && step && state.phase !== 'over') {
         add(action.closest('.unit') || action, 'focus', action.id === 'dice' ? 11 : 8);
         if (!action.disabled && !busy && myTurn()) spotlight.focus.push(action);
+      }
+      if (!rolling && !presenting && !selection && mine().reserve) {
+        const reserve = document.querySelector(`[data-reserve="${seat}"]`);
+        add(reserve, 'context', 6); if (reserve) spotlight.focus.push(reserve);
       }
       const targetKey = `${tutorial.step}:${selection || ''}:${rolling}:${presenting}:${state.turn}`;
       if (targetKey !== spotlight.targetKey && action && !rolling && !presenting) {
@@ -300,11 +347,14 @@
       el.getAnimations({ subtree: true }).forEach(animation => animation.cancel()); el.remove();
     });
     document.querySelectorAll('.attack-aim').forEach(el => el.classList.remove('attack-aim'));
+    document.querySelectorAll('.reserve-attacking').forEach(el => el.classList.remove('reserve-attacking'));
     delete document.body.dataset.attackStage;
   }
   async function drawAttack(ev, token) {
     const alive = () => token === epoch;
-    const board = $('table').getBoundingClientRect(), deck = $('deck').getBoundingClientRect();
+    const board = $('table').getBoundingClientRect();
+    const reserve = ev.origin === 'reserve' && document.querySelector(`[data-reserve="${ev.actor}"]`);
+    const deck = (reserve || $('deck')).getBoundingClientRect();
     const mobilePanel = innerWidth <= 760 ? document.querySelector('.command-panel').getBoundingClientRect().top : innerHeight - 20;
     const width = innerWidth <= 760 ? 88 : 112, height = Math.round(width * 1.4);
     const cx = Math.max(width / 2 + 25, Math.min(innerWidth - width / 2 - 25, board.x + board.width / 2));
@@ -316,8 +366,9 @@
     const flipper = el.querySelector('.attack-flipper'), tally = el.querySelector('.attack-tally');
     const firstTarget = ev.hits?.[0]?.id;
     if (firstTarget) document.querySelector(`[data-unit="${firstTarget}"]`)?.classList.add('attack-aim');
+    if (reserve) { reserve.closest('.unit').classList.add('reserve-attacking'); flipper.style.transform = 'rotateY(180deg)'; }
     setAttackStage('draw'); sound('draw');
-    $('deck').animate([{ transform: 'rotate(-7deg)' }, { transform: 'rotate(-11deg) translateY(-3px)' }, { transform: 'rotate(-7deg)' }], { duration: reduceMotion ? 1 : 400 });
+    if (!reserve) $('deck').animate([{ transform: 'rotate(-7deg)' }, { transform: 'rotate(-11deg) translateY(-3px)' }, { transform: 'rotate(-7deg)' }], { duration: reduceMotion ? 1 : 400 });
     await motion(el, [
       { opacity: 0, transform: `translate(${deck.x + deck.width / 2 - cx}px,${deck.y + deck.height / 2 - cy}px) rotate(-12deg) scale(${deck.width / width})` },
       { opacity: 1, transform: 'translate(0,-12px) rotate(-3deg) scale(1.06)', offset: .76 },
@@ -325,7 +376,7 @@
     ], 440, 'cubic-bezier(.18,.8,.3,1.12)');
     if (!alive()) return false;
     sound('reveal');
-    if (!reduceMotion) await motion(flipper, [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(190deg)', offset: .85 }, { transform: 'rotateY(180deg)' }], 380);
+    if (!reserve && !reduceMotion) await motion(flipper, [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(190deg)', offset: .85 }, { transform: 'rotateY(180deg)' }], 380);
     flipper.style.transform = 'rotateY(180deg)';
     if (!alive()) return false;
     setAttackStage('reveal');
@@ -394,7 +445,7 @@
       if (hit.killed) sparks(rect.x + rect.width / 2, rect.y + 35);
     }
   }
-  function setSelection(next) { selection = next; renderArmies(); renderUI(); }
+  function setSelection(next) { hidePreview(); selection = next; renderArmies(); renderUI(); }
   async function rollAnimation(finalValue) {
     rolling = true; $('dice').classList.add('rolling'); $('dice').dataset.rollPhase = 'airborne'; renderUI(); sound('roll');
     const interval = setInterval(() => drawDie(1 + Math.floor(Math.random() * 6)), 80);
@@ -408,7 +459,7 @@
   async function dispatch(action) {
     if (busy || presenting || resetting || !myTurn()) return;
     if (tutorial && !T.allowed(tutorial.step, action)) { toast('跟着当前提示，先完成这一步'); return; }
-    busy = true; selection = null; const thisEpoch = epoch;
+    hidePreview(); busy = true; selection = null; const thisEpoch = epoch;
     renderArmies(); renderUI();
     try {
       if (thisEpoch !== epoch) return;
@@ -440,12 +491,13 @@
     $('play-again').disabled = voted; $('play-again').innerHTML = voted ? '等待对方同意…' : '再来一局 <span>→</span>';
     if (tutorial) {
       $('result-title').textContent = '第一局，加冕。';
-      $('result-description').textContent = '你已学会掷骰、排兵、册封和逐层突破。准备好与虎鲸正式对弈了。';
+      $('result-description').textContent = '你已学会抽牌、免费排兵 / 弃牌、册封和逐层突破。准备好与虎鲸正式对弈了。';
       $('play-again').disabled = false; $('play-again').innerHTML = '完成教程 <span>→</span>';
     }
   }
   function startTutorial() {
     if (tutorial || resetting) return;
+    hidePreview();
     const previous = { state: structuredClone(state), gameIndex, scrollY: window.scrollY, mode, seat, room, netSession };
     epoch++; clearTimeout(aiTimer); aiTimer = null; clearAttack(); $('dice').getAnimations().forEach(a => a.cancel());
     source?.close(); source = null; presentationQueue = Promise.resolve();
@@ -457,6 +509,7 @@
   }
   async function finishTutorial() {
     if (!tutorial) return;
+    hidePreview();
     const previous = tutorial.previous;
     epoch++; clearTimeout(aiTimer); aiTimer = null; clearAttack(); $('dice').getAnimations().forEach(a => a.cancel());
     document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
@@ -492,7 +545,7 @@
   }
   async function restartWithFlip(reset) {
     if (resetting) return;
-    resetting = true; busy = true; epoch++;
+    hidePreview(); resetting = true; busy = true; epoch++;
     clearTimeout(aiTimer); aiTimer = null; clearAttack(); presenting = false; selection = null; rolling = false;
     $('dice').getAnimations().forEach(animation => animation.cancel());
     $('dice').classList.remove('rolling');
@@ -630,12 +683,16 @@
   $('tutorial-read-rules').onclick = () => { $('tutorial-dialog').close(); openRules(); };
   $('sound-button').onclick = () => { soundEnabled = !soundEnabled; $('sound-button').innerHTML = icon(soundEnabled ? 'sound' : 'mute'); $('sound-button').setAttribute('aria-pressed', soundEnabled); $('sound-button').setAttribute('aria-label', soundEnabled ? '关闭音效' : '打开音效'); $('sound-button').title = soundEnabled ? '关闭音效' : '打开音效'; if (soundEnabled) sound('promote'); };
   $('dice').onclick = () => dispatch({ type: 'roll' });
+  $('draw-button').onclick = $('deck').onclick = () => dispatch({ type: 'draw' });
   $('recruit-button').onclick = () => dispatch({ type: 'recruit' });
   $('promote-button').onclick = () => { if (!$('promote-button').disabled) setSelection(selection === 'promote' ? null : 'promote'); };
   $('attack-button').onclick = () => { if (!$('attack-button').disabled) setSelection(selection === 'attack' ? null : 'attack'); };
   $('end-button').onclick = () => dispatch({ type: 'end' });
   $('cancel-target').onclick = () => setSelection(null);
   $('table').addEventListener('click', event => {
+    if (event.target.closest('#discard-button')) { dispatch({ type: 'discard' }); return; }
+    const reserve = event.target.closest('[data-reserve]');
+    if (reserve) { const owner = Number(reserve.dataset.reserve); if (previewPinned && previewOwner === owner) hidePreview(); else showPreview(owner, true); return; }
     const card = event.target.closest('[data-card]'); if (!card) return;
     const owner = Number(card.dataset.owner), id = card.dataset.card;
     if (selection === 'attack' && owner !== seat && G.frontier(enemy()).some(u => u.id === id)) dispatch({ type: 'attack', target: id });
@@ -644,6 +701,21 @@
     else if (selection === 'promote') toast('请选择你前排的士兵');
     else toast(card.getAttribute('aria-label'));
   });
+  $('close-preview').onclick = hidePreview;
+  $('table').addEventListener('pointerover', event => {
+    const card = event.target.closest('[data-reserve]');
+    if (card && event.pointerType !== 'touch' && !previewPinned) showPreview(Number(card.dataset.reserve));
+  });
+  $('table').addEventListener('pointerout', event => {
+    const card = event.target.closest('[data-reserve]');
+    if (card && !card.contains(event.relatedTarget) && !event.relatedTarget?.closest('#reserve-preview') && !previewPinned) previewTimer = setTimeout(hidePreview, 180);
+  });
+  $('table').addEventListener('focusin', event => { const card = event.target.closest('[data-reserve]'); if (card) showPreview(Number(card.dataset.reserve), previewPinned); });
+  $('table').addEventListener('focusout', event => { if (event.target.closest('[data-reserve]') && !event.relatedTarget?.closest('#reserve-preview') && !previewPinned) hidePreview(); });
+  $('reserve-preview').addEventListener('pointerleave', () => { if (!previewPinned) hidePreview(); });
+  $('reserve-preview').addEventListener('pointerenter', () => clearTimeout(previewTimer));
+  document.addEventListener('click', event => { if (!event.target.closest('[data-reserve],#reserve-preview')) hidePreview(); });
+  window.addEventListener('resize', positionPreview); window.addEventListener('scroll', positionPreview, { passive: true });
   $('lan-mode').onclick = openLan;
   $('room-share').onclick = () => copy(invitation());
   $('ai-mode').onclick = () => { if (mode !== 'ai') newLocal(); };
@@ -662,9 +734,9 @@
   $('play-again').onclick = rematch;
   document.addEventListener('keydown', event => {
     if (resetting) { event.preventDefault(); return; }
-    if (event.key === 'Escape') { if (selection) { event.preventDefault(); setSelection(null); } return; }
+    if (event.key === 'Escape') { hidePreview(); if (selection) { event.preventDefault(); setSelection(null); } return; }
     if (document.querySelector('dialog[open]') || /INPUT|TEXTAREA/.test(event.target.tagName) || event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
-    const button = { d: 'dice', r: 'recruit-button', c: 'promote-button', a: 'attack-button', e: 'end-button' }[event.key.toLowerCase()];
+    const button = { d: 'dice', f: 'draw-button', x: 'discard-button', r: 'recruit-button', c: 'promote-button', a: 'attack-button', e: 'end-button' }[event.key.toLowerCase()];
     if (button && !$(button).disabled) { event.preventDefault(); $(button).click(); }
   });
   render(); scheduleAI();
