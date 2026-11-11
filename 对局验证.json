@@ -1,0 +1,105 @@
+{
+  "totalGames": 12000,
+  "completed": 12000,
+  "profiles": [
+    {
+      "profile": "虎鲸 / 基础策略",
+      "games": 2000,
+      "completed": 2000,
+      "medianRounds": 25,
+      "p95Rounds": 46,
+      "maxRounds": 47,
+      "meanRounds": 25.92,
+      "meanActions": 309.6,
+      "maxActions": 604,
+      "maxAP": 6,
+      "fatigueEnds": 553,
+      "draws": 85
+    },
+    {
+      "profile": "攒 2 回合 / 攒 3 回合后爆发",
+      "games": 2000,
+      "completed": 2000,
+      "medianRounds": 15,
+      "p95Rounds": 32,
+      "maxRounds": 47,
+      "meanRounds": 15.68,
+      "meanActions": 163.5,
+      "maxActions": 508,
+      "maxAP": 24,
+      "fatigueEnds": 142,
+      "draws": 5
+    },
+    {
+      "profile": "攒 5 回合后爆发 / 基础策略",
+      "games": 2000,
+      "completed": 2000,
+      "medianRounds": 6,
+      "p95Rounds": 21,
+      "maxRounds": 41,
+      "meanRounds": 9.23,
+      "meanActions": 86.4,
+      "maxActions": 449,
+      "maxAP": 34,
+      "fatigueEnds": 55,
+      "draws": 5
+    },
+    {
+      "profile": "双方只排兵、册封、弃牌",
+      "games": 2000,
+      "completed": 2000,
+      "medianRounds": 30,
+      "p95Rounds": 34,
+      "maxRounds": 37,
+      "meanRounds": 30.35,
+      "meanActions": 518.4,
+      "maxActions": 546,
+      "maxAP": 6,
+      "fatigueEnds": 2000,
+      "draws": 2000
+    },
+    {
+      "profile": "双方随机合法操作（含主动存点）",
+      "games": 2000,
+      "completed": 2000,
+      "medianRounds": 25,
+      "p95Rounds": 47,
+      "maxRounds": 49,
+      "meanRounds": 26.58,
+      "meanActions": 237.8,
+      "maxActions": 474,
+      "maxAP": 132,
+      "fatigueEnds": 459,
+      "draws": 74
+    },
+    {
+      "profile": "双方只掷骰、存点、跳过",
+      "games": 2000,
+      "completed": 2000,
+      "medianRounds": 50,
+      "p95Rounds": 50,
+      "maxRounds": 50,
+      "meanRounds": 50,
+      "meanActions": 196,
+      "maxActions": 196,
+      "maxAP": 218,
+      "fatigueEnds": 2000,
+      "draws": 2000
+    }
+  ],
+  "idleBoundary": {
+    "rounds": 50,
+    "phase": "over",
+    "winner": -1,
+    "bank": [
+      196,
+      196
+    ],
+    "hp": [
+      0,
+      0
+    ],
+    "deck": 52,
+    "reason": "双方一直跳过时，第46–50回合依次触发2、4、6、8、10点疲劳；最迟第50回合开始时结算。"
+  }
+}

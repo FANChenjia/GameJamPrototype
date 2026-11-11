@@ -4,7 +4,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (G) {
   'use strict';
   const steps = Object.freeze([
-    { type: 'roll', title: '先掷骰，获得行动点', text: '点一下桌上的骰子。这次会有 6 点，足够试试排兵、册封和攻击。', button: 'dice' },
+    { type: 'roll', title: '先掷骰，获得行动点', text: '点一下桌上的骰子。这次增加 6 点；没用完的行动点会存到下一回合。', button: 'dice' },
     { type: 'draw', title: '先抽牌，放入备选区', text: '点击「抽牌」，花 1 点。牌会放在主将左手边，备选区只能留一张。', button: 'draw-button' },
     { type: 'recruit', title: '把 K 免费排成士兵', text: '悬浮或点击备选牌可预览数值。点击「排兵」无需行动点，K 会以 13 生命入阵。', button: 'recruit-button' },
     { type: 'promote', target: 'spades-13', title: '为这名士兵册封', text: '点「册封」，再点你的 K 士兵。花 2 点，回满至 17 生命，并让每次攻击 +1。', button: 'promote-button' },

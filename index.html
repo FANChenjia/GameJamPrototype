@@ -84,7 +84,7 @@
         <p id="turn-description">掷下骰子，让命运开局。</p>
       </section>
 
-      <section class="ap-section" aria-label="剩余行动点"><div class="ap-heading"><span>行动点</span><span><b id="ap-value">—</b><small> / <span id="ap-total">6</span></small></span></div><div class="ap-track" id="ap-track"></div></section>
+      <section class="ap-section" aria-label="行动点储备"><div class="ap-heading"><span>行动点储备</span><span><b id="ap-value">0</b><small id="ap-total">待掷骰</small></span></div><div class="ap-track" id="ap-track"></div></section>
 
       <div class="action-list">
         <button class="action-tile draw-tile" id="draw-button"><span class="tile-icon"><svg><use href="#i-draw"/></svg></span><span class="tile-copy"><strong>抽牌</strong><small>先放入备选，再定用途</small></span><span class="cost">1<span>点</span></span></button>
@@ -108,9 +108,9 @@
     <button class="dialog-close" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button>
     <span class="eyebrow">THE FIELD GUIDE · 01</span><h2 id="rules-title">一副牌，排一座王国。</h2><p class="dialog-intro">击破对方 Joker 主将，即可获胜。每人一张 Joker，其余 52 张牌共用。</p>
     <div class="rule-formation"><div><span>♔</span><strong>主将</strong><small>24 生命</small></div><i>←</i><div><span>♞</span><strong>骑士 × 3</strong><small>点数 +4 生命 · 攻击 +1</small></div><i>←</i><div><span>⚑</span><strong>士兵 × 5</strong><small>点数即生命 · 受伤 ×2</small></div></div>
-    <ol class="rule-steps"><li><b>掷骰</b><span>每回合掷一次六面骰，点数即本回合行动点。余点在回合结束时清空。</span></li><li><b>抽牌 · 1 点</b><span>抽一张牌到主将左侧的备选区，只能放一张。悬浮或点击这张牌可查看排兵与攻击数值；未使用的牌可留到下回合。</span></li><li><b>排兵 / 弃牌 · 免费</b><span>将备选牌以满血排成士兵，每回合最多 2 次；或免费弃掉。即使没有行动点也可执行。</span></li><li><b>册封 · 2 点</b><span>士兵晋升骑士，生命上限变为牌面点数 +4，并回满。每名骑士为攻击增加 1 点基础伤害。</span></li><li><b>攻击 · 1 点</b><span>使用当前备选牌，选择对方最外层单位。卡牌出列展示伤害，再飞向目标。先破士兵，再破骑士，最后是主将。</span></li></ol>
+    <ol class="rule-steps"><li><b>掷骰</b><span>每回合掷一次六面骰，将点数加入自己的行动点储备。未用点数跨回合保留，可持续累加。</span></li><li><b>抽牌 · 1 点</b><span>抽一张牌到主将左侧的备选区，只能放一张。悬浮或点击这张牌可查看排兵与攻击数值；未使用的牌可留到下回合。</span></li><li><b>排兵 / 弃牌 · 免费</b><span>将备选牌以满血排成士兵，每回合最多 2 次；或免费弃掉。即使没有行动点也可执行。</span></li><li><b>册封 · 2 点</b><span>士兵晋升骑士，生命上限变为牌面点数 +4，并回满。每名骑士为攻击增加 1 点基础伤害。</span></li><li><b>攻击 · 1 点</b><span>使用当前备选牌，选择对方最外层单位。卡牌出列展示伤害，再飞向目标。先破士兵，再破骑士，最后是主将。</span></li></ol>
     <div class="damage-guide"><span>抽牌</span><div><b>A–3</b><small>2 伤害</small></div><div><b>4–6</b><small>3 伤害</small></div><div><b>7–9</b><small>4 伤害</small></div><div><b>10–Q</b><small>5 伤害</small></div><div><b>K</b><small>6 伤害</small></div></div>
-    <p class="fine-print">A=1、J=11、Q=12、K=13，花色不影响生命或伤害。基础伤害 = 1 + ⌈牌面数值 ÷ 3⌉。先加骑士增益，再对士兵翻倍；击破士兵消耗的基础伤害向上取整，余伤传递给最外层生命最低的单位。牌堆耗尽重洗弃牌，双方主将依次受到 2、4、6… 点疲劳伤害；同时归零则平局。</p>
+    <p class="fine-print">A=1、J=11、Q=12、K=13，花色不影响生命或伤害。基础伤害 = 1 + ⌈牌面数值 ÷ 3⌉。先加骑士增益，再对士兵翻倍；击破士兵消耗的基础伤害向上取整，余伤传递给最外层生命最低的单位。每次牌堆重洗，疲劳伤害 +2，双方主将直接承伤。第 46 回合起，每个新回合也触发疲劳并继续 +2；最迟第 50 回合开始时结束，同时归零则平局。</p>
     <div class="rules-tutorial-entry"><p class="fine-print" id="rules-tutorial-note">随时练习，退出教程后回到当前牌局。</p><button class="primary-button" id="rules-start-tutorial">开始新手教程 <span>→</span></button><button class="text-button" data-close>回到牌桌</button></div>
   </dialog>
 

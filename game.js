@@ -4,7 +4,7 @@
   else root.Crownfall = factory();
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  const RULES = Object.freeze({ commanderHP: 24, knightHPBonus: 4, soldiers: 5, knights: 3, drawCost: 1, recruitCost: 0, discardCost: 0, promoteCost: 2, attackCost: 1, recruitsPerTurn: 2 });
+  const RULES = Object.freeze({ commanderHP: 24, knightHPBonus: 4, soldiers: 5, knights: 3, drawCost: 1, recruitCost: 0, discardCost: 0, promoteCost: 2, attackCost: 1, recruitsPerTurn: 2, fatigueStep: 2, roundFatigueStart: 46 });
   const SUITS = ['spades', 'hearts', 'clubs', 'diamonds'];
   const SYMBOLS = { spades: '♠', hearts: '♥', clubs: '♣', diamonds: '♦' };
   const face = value => ({ 1: 'A', 11: 'J', 12: 'Q', 13: 'K' }[value] || String(value));
@@ -20,8 +20,8 @@
   }
   function create(rng = Math.random, first = 0) {
     const deck = SUITS.flatMap(suit => Array.from({ length: 13 }, (_, i) => ({ id: suit + '-' + (i + 1), suit, value: i + 1 })));
-    return { version: 3, seq: 0, turn: first, turnNumber: 1, round: 1, phase: 'roll', ap: 0, die: null, recruits: 0, winner: null, fatigue: 0,
-      players: [0, 1].map(i => ({ id: i, hp: RULES.commanderHP, reserve: null, soldiers: Array(5).fill(null), knights: Array(3).fill(null) })),
+    return { version: 5, seq: 0, turn: first, turnNumber: 1, round: 1, phase: 'roll', ap: 0, die: null, recruits: 0, winner: null, fatigue: 0, roundFatigueApplied: 0,
+      players: [0, 1].map(i => ({ id: i, hp: RULES.commanderHP, ap: 0, reserve: null, soldiers: Array(5).fill(null), knights: Array(3).fill(null) })),
       deck: shuffle(deck, rng), discard: [], log: [], lastEvent: null };
   }
   function frontier(player) {
@@ -43,6 +43,14 @@
       state.version = 2;
     }
     if (state.version === 2) { state.players.forEach(p => { p.reserve = null; }); state.version = 3; }
+    if (state.version === 3) {
+      state.players.forEach((p, i) => { p.ap = i === state.turn ? state.ap : 0; });
+      state.version = 4;
+    }
+    if (state.version === 4) {
+      state.roundFatigueApplied = 0; state.version = 5;
+      applyRoundFatigue(state, state.round);
+    }
     return state;
   }
   function getUnit(player, id) { return troops(player).find(u => u.id === id); }
@@ -53,17 +61,30 @@
       state.phase = 'over';
     }
   }
+  function applyFatigue(state) {
+    state.fatigue += RULES.fatigueStep;
+    state.players.forEach(p => { p.hp = Math.max(0, p.hp - state.fatigue); });
+    finish(state); return state.fatigue;
+  }
+  function applyRoundFatigue(state, round) {
+    const due = Math.max(0, round - RULES.roundFatigueStart + 1);
+    let damage = 0;
+    while (state.roundFatigueApplied < due && state.phase !== 'over') {
+      state.roundFatigueApplied++; damage += applyFatigue(state);
+    }
+    return damage;
+  }
   function draw(state, rng) {
     if (!state.deck.length) {
       state.deck = shuffle(state.discard.splice(0), rng);
-      state.fatigue += 2;
-      state.players.forEach(p => { p.hp = Math.max(0, p.hp - state.fatigue); });
-      finish(state);
+      applyFatigue(state);
       if (state.phase === 'over') return null;
     }
     return state.deck.pop() || null;
   }
   function event(state, data) {
+    // Keep each player's bank in sync with the active-turn AP balance.
+    state.players[state.turn].ap = state.ap;
     const ev = { id: ++state.seq, round: state.round, actor: state.turn, ...data };
     state.lastEvent = ev;
     state.log.unshift(ev);
@@ -78,19 +99,22 @@
     if (action.type === 'roll') {
       assert(state.phase === 'roll', '本回合已经掷骰');
       state.die = 1 + Math.floor(rng() * 6);
-      state.ap = state.die;
+      state.ap += state.die;
       state.phase = 'action';
-      return event(state, { type: 'roll', value: state.die, text: '掷出 ' + state.die + ' 点' });
+      return event(state, { type: 'roll', value: state.die, text: '掷出 ' + state.die + ' 点 · 共 ' + state.ap + ' 点' });
     }
     assert(state.phase === 'action', '先掷骰，获得行动点');
     const own = state.players[actor];
     const enemy = state.players[1 - actor];
     if (action.type === 'end') {
-      const ev = event(state, { type: 'end', text: '结束回合' });
+      const nextRound = Math.ceil((state.turnNumber + 1) / 2);
+      const fatigueDamage = applyRoundFatigue(state, nextRound);
+      const ev = event(state, { type: 'end', storedAP: state.ap, fatigueDamage, fatigueReason: fatigueDamage ? 'round' : null, fatigueRound: fatigueDamage ? nextRound : null, text: '结束回合' + (state.ap ? ' · 储存 ' + state.ap + ' 点' : '') + (fatigueDamage ? '；第 ' + nextRound + ' 回合疲劳 · 双方 −' + fatigueDamage : '') });
       state.turn = 1 - actor;
       state.turnNumber++;
       state.round = Math.ceil(state.turnNumber / 2);
-      state.phase = 'roll'; state.ap = 0; state.die = null; state.recruits = 0;
+      if (state.phase !== 'over') state.phase = 'roll';
+      state.ap = enemy.ap; state.die = null; state.recruits = 0;
       return ev;
     }
     if (action.type === 'draw') {
@@ -99,7 +123,7 @@
       const previousFatigue = state.fatigue, card = draw(state, rng);
       state.ap -= RULES.drawCost; own.reserve = card;
       const fatigueDamage = state.fatigue > previousFatigue ? state.fatigue : 0;
-      return event(state, { type: 'draw', card, fatigueDamage, text: (fatigueDamage ? '重洗 · 双方主将 −' + fatigueDamage + '；' : '') + (card ? '抽牌 ' + name(card) : '疲劳终局') });
+      return event(state, { type: 'draw', card, fatigueDamage, fatigueReason: fatigueDamage ? 'deck' : null, text: (fatigueDamage ? '重洗 · 双方主将 −' + fatigueDamage + '；' : '') + (card ? '抽牌 ' + name(card) : '疲劳终局') });
     }
     if (action.type === 'discard') {
       assert(own.reserve, '备选区没有可弃的牌');

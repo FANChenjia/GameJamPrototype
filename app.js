@@ -5,6 +5,7 @@
   const AI_NAME = '虎鲸', AI_TAGLINE = '才不是大肥鱼';
   const $ = id => document.getElementById(id);
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const FATIGUE_DURATION = reduceMotion ? 1600 : 2250;
   const delay = ms => new Promise(resolve => setTimeout(resolve, reduceMotion ? Math.min(ms, 80) : ms));
   const STORE = 'crownfall.local.v1', SESSION = 'crownfall.seat.v1';
   let state = G.create(), seat = 0, mode = 'ai', room = null, connection = 'ok';
@@ -12,11 +13,12 @@
   let presentationQueue = Promise.resolve();
   let tutorial = null;
   let tutorialSpotlight = null;
+  let fatigueShowing = false;
   let previewOwner = null, previewPinned = false, previewTimer;
   let netSession = null, netInfo = null, lastResult = -1, gameIndex = 0, toastTimer, soundEnabled = false, audio;
   try {
     const saved = JSON.parse(localStorage.getItem(STORE));
-    if ([1, 2, 3].includes(saved?.version) && saved.players?.length === 2 && Array.isArray(saved.deck) && Array.isArray(saved.discard) && ['roll', 'action', 'over'].includes(saved.phase) && saved.players.every(p => p.soldiers?.length === 5 && p.knights?.length === 3)) state = G.migrate(saved);
+    if ([1, 2, 3, 4, 5].includes(saved?.version) && saved.players?.length === 2 && Array.isArray(saved.deck) && Array.isArray(saved.discard) && ['roll', 'action', 'over'].includes(saved.phase) && saved.players.every(p => p.soldiers?.length === 5 && p.knights?.length === 3)) state = G.migrate(saved);
   } catch { /* A fresh table is always available when storage is disabled. */ }
   gameIndex = (state.turn + state.turnNumber - 1) % 2;
   function save(value = state) { if (mode === 'ai' && !tutorial) try { localStorage.setItem(STORE, JSON.stringify(value)); } catch {} }
@@ -45,7 +47,7 @@
   const enemy = () => state.players[1 - seat];
   const connected = () => mode === 'ai' || (room?.ready && room.connected.every(Boolean) && connection === 'ok');
   const myTurn = () => state.turn === seat && connected() && state.phase !== 'over';
-  const canAct = () => myTurn() && state.phase === 'action' && !busy && !presenting && !resetting;
+  const canAct = () => myTurn() && state.phase === 'action' && !busy && !presenting && !resetting && !fatigueShowing;
   const count = list => list.filter(Boolean).length;
   const red = card => card.suit === 'hearts' || card.suit === 'diamonds';
   const cardFaceHTML = (card, role = 'soldier') => window.CrownfallCards.render(card, role);
@@ -98,7 +100,7 @@
   function showPreview(owner, pinned = false) {
     clearTimeout(previewTimer);
     const p = state.players[owner], card = p.reserve;
-    if (!card || presenting || resetting || selection) return hidePreview();
+    if (!card || presenting || resetting || selection || fatigueShowing) return hidePreview();
     previewOwner = owner; previewPinned = pinned;
     const bonus = count(p.knights), power = G.power(card), damage = power + bonus;
     $('reserve-preview-content').innerHTML = `<div class="book-heading"><span>${escape(G.name(card))}</span><small>一牌 · 两种去处</small></div><div class="book-pages"><section><span class="book-kicker">排兵 <i>0 点</i></span><b>${card.value}<small>生命</small></b><p>士兵 · 牌面点数</p><footer>${count(p.soldiers) >= 5 ? '士兵位置已满' : state.turn === owner && state.recruits >= 2 ? '本回合排兵已达上限' : '满血加入前阵'}</footer></section><section><span class="book-kicker">攻击 <i>1 点</i></span><b>${damage}<small>基础伤害</small></b><p>牌面 ${power} ＋ 骑士 ${bonus}</p><footer>士兵 <strong>${damage * 2}</strong> · 骑士 / 主将 <strong>${damage}</strong></footer></section></div>`;
@@ -158,15 +160,17 @@
     else if (otherTurn) { title = '静候，落子。'; description = mode === 'ai' ? AI_NAME + '正在推演下一步。' : '对手正在落子，留意他的牌阵。'; eyebrow = 'OPPONENT’S TURN'; }
     else { title = '由你，执棋。'; description = selection === 'attack' ? '点选亮起的敌方单位，发起攻击。' : selection === 'promote' ? '选一名士兵，为他加冕骑士之名。' : state.phase === 'roll' ? '掷下骰子，让命运开局。' : state.ap === 0 ? own.reserve ? '还可以免费排兵或弃牌。' : '行动点已用尽，交出这一回合。' : '落一张牌，向王冠再近一步。'; eyebrow = 'YOUR TURN'; }
     if (presenting) description = ({ draw: '备选牌出列，准备进攻…', reveal: '牌已翻开，蓄势待发。', strike: '突破敌阵！', impact: '伤害结算中…' })[attackStage] || description;
+    if (fatigueShowing) description = '疲劳结算 · 双方主将直接承受 ' + state.fatigue + ' 点伤害。';
     if (resetting) { title = '再起，一座王国。'; description = document.body.dataset.resetStage === 'settle' ? '牌桌落稳，新局将启。' : '收起旧牌阵，重新开局。'; eyebrow = 'A FRESH DECK'; }
     $('turn-title').textContent = title; $('turn-description').textContent = description; $('turn-eyebrow').textContent = eyebrow;
     $('turn-dot').style.background = waiting || !connected() ? '#bca16b' : otherTurn ? '#bd927c' : '#7d9678';
     $('turn-index').textContent = String(state.turnNumber).padStart(2, '0');
     $('round-value').textContent = String(state.round).padStart(2, '0');
-    $('ap-value').textContent = state.phase === 'roll' ? '—' : state.ap;
-    $('ap-total').textContent = state.die || 6;
-    document.querySelector('.ap-heading>span:first-child').textContent = otherTurn && !waiting ? '对手行动点' : '行动点';
-    $('ap-track').innerHTML = Array.from({ length: 6 }, (_, i) => `<i class="ap-pip ${i < state.ap ? 'lit' : i < (state.die || 0) ? 'spent' : ''}"></i>`).join('');
+    $('ap-value').textContent = state.ap;
+    $('ap-total').textContent = state.phase === 'over' ? '已结算' : state.die ? '本次 +' + state.die : '待掷骰';
+    document.querySelector('.ap-heading>span:first-child').textContent = otherTurn && !waiting ? '对手储备' : '行动点储备';
+    $('ap-track').innerHTML = Array.from({ length: Math.min(12, Math.max(6, state.ap)) }, (_, i) => `<i class="ap-pip ${i < state.ap ? 'lit' : ''}"></i>`).join('') + (state.ap > 12 ? `<span class="ap-overflow">+${state.ap - 12}</span>` : '');
+    $('ap-track').setAttribute('aria-label', '储存 ' + state.ap + ' 行动点');
     $('draw-button').disabled = !canAct() || state.ap < 1 || Boolean(own.reserve);
     $('draw-button').title = own.reserve ? '先使用或弃掉备选牌' : '抽牌 · 1 行动点（F）';
     $('deck').disabled = $('draw-button').disabled;
@@ -179,10 +183,10 @@
     $('attack-button').title = !own.reserve ? '先抽牌放入备选区' : '用备选牌攻击 · 1 行动点（A）';
     $('promote-button').classList.toggle('active', selection === 'promote'); $('attack-button').classList.toggle('active', selection === 'attack');
     $('end-button').disabled = !canAct();
-    $('end-button').title = '结束回合，未使用的行动点会清空（E）';
-    $('dice').disabled = !myTurn() || state.phase !== 'roll' || busy || rolling || presenting || resetting;
-    $('dice').parentElement.classList.toggle('ready', myTurn() && state.phase === 'roll' && !busy);
-    $('dice').setAttribute('aria-label', state.phase === 'roll' ? '掷骰，获得行动点（D）' : '本回合骰子：' + state.die + ' 点');
+    $('end-button').title = '结束回合，未用行动点存入自己的储备（E）';
+    $('dice').disabled = !myTurn() || state.phase !== 'roll' || busy || rolling || presenting || resetting || fatigueShowing;
+    $('dice').parentElement.classList.toggle('ready', myTurn() && state.phase === 'roll' && !busy && !fatigueShowing);
+    $('dice').setAttribute('aria-label', state.phase === 'over' ? '本局已结束' : state.phase === 'roll' ? '掷骰，获得行动点（D）' : '本回合骰子：' + state.die + ' 点');
     $('dice-caption').innerHTML = rolling ? '命运转动中' : waiting ? '等待入座' : !connected() ? '等待重连' : state.phase === 'over' ? '胜负已定' : otherTurn ? '对手的骰子' : state.phase === 'roll' ? '点击掷骰 <span>↗</span>' : '本回合已掷';
     if (!rolling) drawDie(state.die || 5);
     $('deck-count').textContent = state.deckCount ?? state.deck.length;
@@ -191,7 +195,7 @@
     $('opponent-type').textContent = mode === 'ai' ? AI_TAGLINE : room?.ready ? room.connected[1 - seat] ? '已入座' : '重连中' : '空席以待';
     $('opponent-status').classList.toggle('offline', mode === 'lan' && !room?.connected[1 - seat]);
     $('my-type').textContent = mode === 'ai' ? '执青 · ' + (gameIndex % 2 === 0 ? '先手' : '后手') : '执青 · ' + (seat === room.gameIndex % 2 ? '先手' : '后手');
-    $('table-status').textContent = state.fatigue ? '疲劳 ' + state.fatigue + ' · 牌堆已重洗' : selection ? '落子无悔，谋定后动。' : '一副扑克，一座王国。';
+    $('table-status').textContent = state.fatigue ? '疲劳 ' + state.fatigue + ' · 主将直接承伤' : selection ? '落子无悔，谋定后动。' : '一副扑克，一座王国。';
     $('mode-caption').innerHTML = mode === 'ai' ? '本地演练 <i></i> 自动存档' : '局域网牌桌 <i></i> ' + escape(room.code);
     $('ai-mode').classList.toggle('active', mode === 'ai'); $('lan-mode').classList.toggle('active', mode === 'lan');
     $('ai-mode').setAttribute('aria-pressed', mode === 'ai'); $('lan-mode').setAttribute('aria-pressed', mode === 'lan');
@@ -218,7 +222,7 @@
     if (!step || state.phase === 'over') return;
     $('turn-eyebrow').textContent = `新手教程 · ${tutorial.step + 1} / ${T.steps.length}`;
     $('turn-title').textContent = step.title;
-    $('turn-description').textContent = state.turn !== seat ? '虎鲸正在把回合交还给你，稍等一下。' : rolling ? '骰子正在落稳，点数就是本回合行动点。' : presenting ? '先看清攻击牌，再观察敌阵的生命变化。' : step.text;
+    $('turn-description').textContent = state.turn !== seat ? '虎鲸正在把回合交还给你，稍等一下。' : rolling ? '骰子正在落稳，点数会加入行动点储备。' : presenting ? '先看清攻击牌，再观察敌阵的生命变化。' : step.text;
     const actions = { roll: 'dice', draw: 'draw-button', discard: 'discard-button', recruit: 'recruit-button', promote: 'promote-button', attack: 'attack-button', end: 'end-button' };
     for (const [type, id] of Object.entries(actions)) if (type !== step.type) $(id).disabled = true;
     if (!$(step.button).disabled && !selection) $(step.button).classList.add('tutorial-focus');
@@ -325,10 +329,9 @@
   function render(ev) {
     renderArmies(ev); renderUI();
     if (ev && ev.type !== 'roll') sound(ev.type);
-    if (ev?.fatigueDamage) toast('牌堆重洗 · 双方主将受到 ' + ev.fatigueDamage + ' 点疲劳伤害');
     if (state.phase === 'over' && lastResult !== state.seq) {
       lastResult = state.seq; const currentEpoch = epoch;
-      setTimeout(() => { if (epoch === currentEpoch && state.phase === 'over') { document.querySelectorAll('dialog[open]').forEach(d => d.close()); $('result-dialog').showModal(); if (state.winner === seat) sound('win'); } }, reduceMotion ? 100 : 1100);
+      setTimeout(() => { if (epoch === currentEpoch && state.phase === 'over') { document.querySelectorAll('dialog[open]').forEach(d => d.close()); $('result-dialog').showModal(); if (state.winner === seat) sound('win'); } }, ev?.fatigueDamage ? FATIGUE_DURATION + 180 : reduceMotion ? 100 : 1100);
     }
   }
   function setAttackStage(name) {
@@ -343,12 +346,48 @@
     await element.animate(frames, { duration, easing, fill: 'forwards' }).finished.catch(() => {});
   }
   function clearAttack() {
+    clearFatigue();
     document.querySelectorAll('.attack-showcase,.attack-trail').forEach(el => {
       el.getAnimations({ subtree: true }).forEach(animation => animation.cancel()); el.remove();
     });
     document.querySelectorAll('.attack-aim').forEach(el => el.classList.remove('attack-aim'));
     document.querySelectorAll('.reserve-attacking').forEach(el => el.classList.remove('reserve-attacking'));
     delete document.body.dataset.attackStage;
+  }
+  function clearFatigue() {
+    document.querySelectorAll('.fatigue-notice,.fatigue-veil,.fatigue-damage').forEach(el => { el.getAnimations().forEach(a => a.cancel()); el.remove(); });
+    document.querySelectorAll('.fatigue-struck').forEach(el => el.classList.remove('fatigue-struck'));
+    fatigueShowing = false;
+  }
+  async function showFatigue(ev, token) {
+    const table = $('table').getBoundingClientRect(), w = Math.min(310, document.documentElement.clientWidth - 40);
+    const panelTop = innerWidth <= 760 ? document.querySelector('.command-panel').getBoundingClientRect().top : innerHeight;
+    const x = Math.max(w / 2 + 20, Math.min(document.documentElement.clientWidth - w / 2 - 20, table.x + table.width / 2));
+    const y = Math.max(110, Math.min(panelTop - 110, table.y + table.height / 2));
+    const veil = document.createElement('div'); veil.className = 'fatigue-veil'; $('effects').append(veil);
+    if (!reduceMotion) veil.animate([{ opacity: 0 }, { opacity: .75, offset: .2 }, { opacity: 0 }], { duration: 1100, fill: 'forwards' });
+    const notice = document.createElement('div'); notice.className = 'fatigue-notice';
+    notice.setAttribute('role', 'alert'); notice.style.cssText = `left:${x - w / 2}px;top:${y - 102}px;width:${w}px`;
+    const reason = ev.fatigueReason === 'round' ? `第 ${ev.fatigueRound} 回合 · 末局疲劳` : '公共牌堆 · 重洗疲劳';
+    notice.innerHTML = `<span class="fatigue-reason">${reason}</span><strong>疲劳结算</strong><div class="fatigue-seal"><b>−${ev.fatigueDamage}</b></div><p>双方主将直接承伤</p>`;
+    $('effects').append(notice); sound('attack');
+    if (!reduceMotion) notice.animate([
+      { opacity: 0, transform: 'translateY(-20px) rotate(-4deg) scale(.78)' },
+      { opacity: 1, transform: 'translateY(3px) rotate(1deg) scale(1.035)', offset: .12 },
+      { opacity: 1, transform: 'translateY(0) rotate(0) scale(1)', offset: .22 },
+      { opacity: 1, transform: 'translateY(0) scale(1)', offset: .84 },
+      { opacity: 0, transform: 'translateY(-12px) scale(.97)' }
+    ], { duration: FATIGUE_DURATION, easing: 'ease-out', fill: 'both' });
+    document.querySelectorAll('.commander .playing-card').forEach(card => {
+      card.classList.add('fatigue-struck');
+      const r = card.getBoundingClientRect(), damage = document.createElement('b'); damage.className = 'fatigue-damage';
+      damage.style.cssText = `left:${r.x + r.width / 2}px;top:${r.y - 8}px`; damage.textContent = '−' + ev.fatigueDamage;
+      $('effects').append(damage);
+      if (!reduceMotion) damage.animate([{ opacity: 0, transform: 'translate(-50%,10px) scale(.6)' }, { opacity: 1, transform: 'translate(-50%,-14px) scale(1.15)', offset: .16 }, { opacity: 1, transform: 'translate(-50%,-22px) scale(1)', offset: .72 }, { opacity: 0, transform: 'translate(-50%,-44px)' }], { duration: FATIGUE_DURATION, fill: 'both' });
+    });
+    // Keep the damage readable even when the system requests less movement.
+    await new Promise(resolve => setTimeout(resolve, FATIGUE_DURATION));
+    if (token === epoch) clearFatigue();
   }
   async function drawAttack(ev, token) {
     const alive = () => token === epoch;
@@ -411,6 +450,12 @@
       if (token === epoch) { state = next; render(ev); }
       return;
     }
+    if (ev?.fatigueDamage) {
+      hidePreview(); fatigueShowing = true; state = next; render(ev);
+      await showFatigue(ev, token);
+      if (token === epoch) renderUI();
+      return;
+    }
     if (!ev || ev.type !== 'attack' || !ev.card) { state = next; render(ev); return; }
     presenting = true; selection = null; renderArmies(); renderUI();
     try {
@@ -457,7 +502,7 @@
     } finally { clearInterval(interval); clearTimeout(revealTimer); drawDie(finalValue); rolling = false; $('dice').classList.remove('rolling'); delete $('dice').dataset.rollPhase; }
   }
   async function dispatch(action) {
-    if (busy || presenting || resetting || !myTurn()) return;
+    if (busy || presenting || resetting || fatigueShowing || !myTurn()) return;
     if (tutorial && !T.allowed(tutorial.step, action)) { toast('跟着当前提示，先完成这一步'); return; }
     hidePreview(); busy = true; selection = null; const thisEpoch = epoch;
     renderArmies(); renderUI();
@@ -469,7 +514,7 @@
     finally { if (thisEpoch === epoch) { busy = false; renderUI(); scheduleAI(); } }
   }
   function scheduleAI() {
-    if (aiTimer || tutorial || presenting || resetting || mode !== 'ai' || state.turn !== 1 || state.phase === 'over') return;
+    if (aiTimer || tutorial || presenting || resetting || fatigueShowing || mode !== 'ai' || state.turn !== 1 || state.phase === 'over') return;
     const thisEpoch = epoch;
     aiTimer = setTimeout(async () => {
       aiTimer = null;
